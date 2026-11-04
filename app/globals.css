@@ -2441,3 +2441,15 @@ main {
     display: flex;
   }
 }
+
+.modal-notice {
+  position: sticky;
+  top: 69px;
+  z-index: 3;
+  padding: 12px 25px;
+  background: #edf0ff;
+  color: #5366a6;
+  font-size: 12px;
+  line-height: 1.7;
+  border-bottom: 1px solid #dce3ff;
+}

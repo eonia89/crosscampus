@@ -101,11 +101,13 @@ function Modal({
   children,
   onClose,
   wide = false,
+  notice,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  notice?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -135,6 +137,11 @@ function Modal({
           <X size={21} />
         </button>
       </header>
+      {notice && (
+        <div className="modal-notice" role="status">
+          {notice}
+        </div>
+      )}
       {children}
     </dialog>
   );
@@ -1083,7 +1090,12 @@ export default function Crosscampus() {
         </div>
       )}
       {selectedProject && (
-        <Modal title="프로젝트 살펴보기" onClose={() => setSelected(null)} wide>
+        <Modal
+          notice={toast}
+          title="프로젝트 살펴보기"
+          onClose={() => setSelected(null)}
+          wide
+        >
           <ProjectDetail
             project={selectedProject}
             world={world}
@@ -1101,7 +1113,11 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "profile" && (
-        <Modal title="너의 관심사를 알려줘" onClose={() => setModal("")}>
+        <Modal
+          notice={toast}
+          title="너의 관심사를 알려줘"
+          onClose={() => setModal("")}
+        >
           <ProfileForm
             profile={me}
             busy={busy}
@@ -1118,7 +1134,12 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "create" && (
-        <Modal title="작은 아이디어를 꺼내봐" onClose={() => setModal("")} wide>
+        <Modal
+          notice={toast}
+          title="작은 아이디어를 꺼내봐"
+          onClose={() => setModal("")}
+          wide
+        >
           <ProjectForm
             busy={busy}
             submit={async (project) => {
@@ -1136,7 +1157,11 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "signin" && (
-        <Modal title="나만의 공간에서 이어가기" onClose={() => setModal("")}>
+        <Modal
+          notice={toast}
+          title="나만의 공간에서 이어가기"
+          onClose={() => setModal("")}
+        >
           <div className="modal-body">
             <p>로그인하면 프로젝트와 지원 내용을 저장할 수 있어요.</p>
             <a
@@ -1150,7 +1175,11 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "how" && (
-        <Modal title="세 번의 작은 시작" onClose={() => setModal("")}>
+        <Modal
+          notice={toast}
+          title="세 번의 작은 시작"
+          onClose={() => setModal("")}
+        >
           <div className="modal-body how-body">
             <div>
               <b>01</b>
@@ -1189,7 +1218,11 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "about" && (
-        <Modal title="Crosscampus에 대해" onClose={() => setModal("")}>
+        <Modal
+          notice={toast}
+          title="Crosscampus에 대해"
+          onClose={() => setModal("")}
+        >
           <div className="modal-body prose">
             <span className="eyebrow">DIFFERENT SCHOOLS. ONE FIRST STEP.</span>
             <h3>학교 밖에서, 함께 시작할 사람.</h3>
@@ -1224,7 +1257,11 @@ export default function Crosscampus() {
         </Modal>
       )}
       {modal === "reset" && (
-        <Modal title="체험을 처음부터 시작할까요?" onClose={() => setModal("")}>
+        <Modal
+          notice={toast}
+          title="체험을 처음부터 시작할까요?"
+          onClose={() => setModal("")}
+        >
           <div className="modal-body">
             <p>
               내 체험 공간의 변경 내용만 초기화합니다. 실제 프로젝트 공간은
