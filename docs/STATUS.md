@@ -15,7 +15,9 @@ Public demo uses fictional students and browser-local persistence. Actual projec
 - TypeScript and Vite production build passed. Bundle-size advisory remains (~254 KB gzip JS); optimization is future work.
 - Local browser: fictional Jin applied, Mina accepted, the first-sprint board appeared, and its task completion persisted through reload and switching back to Jin.
 - Desktop and 390px mobile frame inspected. Production HTTPS page rendered with six fictional demo projects.
-- Production Google login and final GitHub CI results are recorded in the final handoff after verification; do not infer them from provider provisioning alone.
+- Production Google popup login succeeded for the owner; live mode loaded its empty Firestore workspace. No fictional profile/project was inserted into production.
+- HTTPS and runtime config returned 200; unauthenticated production Firestore listing returned 403.
+- GitHub CI result is recorded in the final handoff after the migration PR check.
 
 ## Pending product work
 

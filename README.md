@@ -7,7 +7,7 @@
 ## 바로 살펴보기
 
 - GitHub: [eonia89/crosscampus](https://github.com/eonia89/crosscampus) (비공개)
-- Firebase 프로젝트: `crosscampus-kr`. 배포 상태와 검증 결과는 [STATUS](docs/STATUS.md) 참조.
+- 서비스: [Crosscampus](https://crosscampus-kr.web.app) · Firebase 프로젝트 `crosscampus-kr`. 배포와 Google 로그인 검증 완료.
 - 핵심 흐름: **발견 → 역할별 지원 → 리더 수락 → 첫 주 실행 보드**
 - `체험 공간`: 가상 학교·학생·프로젝트 6개. 로그인 없이 Jin / Mina / Yuri로 전체 흐름을 검증합니다. 변경 내용은 해당 브라우저에만 저장됩니다.
 - `실제 프로젝트`: Google 로그인 후 초대된 계정만 접근합니다. Firestore에 저장되며 지원서는 지원자·리더만, 보드는 합류한 팀원만 볼 수 있습니다.
