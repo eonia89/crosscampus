@@ -1,41 +1,40 @@
-# Firebase deployment and operations
+# Deployment and operations
 
-Project: `crosscampus-kr` · Hosting: https://crosscampus-kr.web.app · [Console](https://console.firebase.google.com/project/crosscampus-kr/overview)
+Project: `crosscampus-kr` · [Live demo](https://crosscampus-kr.web.app) · [Firebase Console](https://console.firebase.google.com/project/crosscampus-kr/overview)
 
-The owner approved Firebase CLI OAuth for the deployment. Standard Firestore is in Seoul (`asia-northeast3`), with its free tier enabled. Billing is disabled and no billing account is linked. Google sign-in is enabled. No Cloud Functions, App Hosting, Storage bucket, analytics, payment card or service-account key is required.
+Firebase Hosting serves the Vite build. Google Authentication identifies users; Firestore Standard in Seoul (`asia-northeast3`) stores live records. The project uses the Spark free tier with no linked billing account as of 2026-11-05. Monitor quota use before expanding the pilot.
 
-## Deploy
+## Deployment
 
 ```sh
 npm ci
 npm test
 npm run test:rules
 npm run typecheck
+npm run format:check
 npm run build
 npx firebase login
 npm run deploy:firebase -- --project crosscampus-kr
 ```
 
-Run deploy only with the owner's authorization. Do not deploy the historical Sites Worker as a server. `.firebaserc` selects the project; explicitly checking the target is still required. The browser obtains public Firebase client configuration from Hosting's `/__/firebase/init.json`. Firebase web API keys are client configuration, not administrative secrets; Rules protect data. No private key belongs in frontend environment variables.
+Only maintainers with deployment approval should run the final command. Verify the project before deploying. Hosting releases can be rolled back in the console; restore Firestore Rules separately from the intended source revision.
 
-The one-time Google provider setup used Firebase CLI's [auth provider configuration](https://firebase.google.com/docs/auth/configure-providers-cli). Owner-specific `supportEmail` is kept in ignored `firebase-config.local.json`, not committed. This email may be shown on the Google consent screen. Repeated Hosting/Rules deployments do not change Authentication configuration. For a different Firebase project, register a web app, configure Google sign-in, create the default Firestore database, and verify authorized domains before deploying.
+The browser loads public client configuration from `/__/firebase/init.json`. Never put administrator credentials in frontend configuration. Google provider configuration is managed separately; routine Hosting/Rules deployment does not change it. For a new Firebase project, register a web app, enable Google sign-in, create the default Firestore database, and configure authorized domains.
 
-## Pilot access
+## Invitations
 
-The public site contains only the fictional demo. Live Firestore records require a verified Google account with an enabled invite. Currently only the project owner's Google email has an enabled invite; no student or collaborator has been added.
+An administrator grants a named pilot participant access by creating `access/{verified Google email}` with Boolean field `enabled: true`. Setting it to false revokes live database access. Client users cannot enumerate or change invitations.
 
-When the human authorizes a specific pilot member, a Firebase administrator creates `access/{exact verified Google email}` with Boolean field `enabled: true` through the console. Disable that field to revoke live DB access. An app user cannot edit invitations, enumerate emails or grant access to others. GitHub collaboration access is separate. Google sign-in is identity verification, not school-enrollment verification.
+The public demo does not read the live collections. Profiles are visible within the invited space, application notes only to applicant/leader, and sprint content only to team members. Reports are create-only for clients; administrators review them in the console.
 
-## Local development
+## Local development and credentials
 
-No cloud access is needed for the demo. `npm run dev` uses browser storage. For live development use Java 21+, `npm run emulators` and `VITE_USE_EMULATORS=true npm run dev`. This flag is honored only for a development build on loopback. Production builds cannot switch to emulators through a URL/query parameter.
+Follow [Contributing](../CONTRIBUTING.md) for emulator setup. The emulator seed uses the fixed `demo-crosscampus` project and loopback host. It cannot target production.
 
-The Rules tests seed verified test identities and invitations using `@firebase/rules-unit-testing`, then exercise the same live adapter as the app. No real Google token is involved. For manual local UI testing, seed a test invitation into the emulator with an admin context (see the test setup), then use the Auth emulator's simulated Google login. Never seed fictional users into the real project.
+Keep Firebase CLI credentials, owner-specific provider settings (`firebase-config.local.json`), emulator state, and debug logs out of Git. Google sign-in does not establish school enrollment. Private repository access and live-product invitations are managed separately.
 
-## Limits and recovery
+## Limits
 
-Spark has finite Hosting transfer and Firestore read/write quotas. Exceeding a quota can make a feature unavailable; no paid plan has been enabled. Monitor [usage](https://console.firebase.google.com/project/crosscampus-kr/usage/details). Lists are deliberately bounded (see ARCHITECTURE) but each mutation reloads data, so this remains a small pilot. Pagination and abuse controls are required before broad recruitment.
+Spark quotas can interrupt service when exhausted. Monitor [Firebase usage](https://console.firebase.google.com/project/crosscampus-kr/usage/details), especially Firestore reads. The current adapter reloads bounded lists after writes. Broad recruitment requires pagination, a moderation process, and abuse controls.
 
-Old Sites/D1 state remains at the historical private URL. Migration inventory found one demo row and no live workspace; no real student data needed transfer. Browser-local demo changes are specific to a browser/account and do not sync across devices.
-
-Keep source changes in a reviewable PR. Firebase Hosting releases can be rolled back from the console, but database Rules must be separately restored from the intended Git revision. The prior complete Sites source is `e5a1b47`; use that revision for a Sites rollback.
+The previous hosted prototype remains separate. No live records required migration; its historical source is available at Git revision `e5a1b47`.

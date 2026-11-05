@@ -7,7 +7,7 @@ import {
   visibleWorld,
   getMatch,
   DomainError,
-} from "../lib/domain.mjs";
+} from "../src/lib/domain.mjs";
 const now = Date.parse("2026-11-05T02:00:00+09:00");
 const world = () => makeDemoWorld(now);
 let counter = 0;

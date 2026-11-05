@@ -2,17 +2,17 @@
 
 ## Current runtime: Firebase Spark
 
-`index.html` → `firebase/main.tsx` → existing React UI. Vite outputs `dist-firebase/`, served by Firebase Hosting. Google Auth identifies the real actor; Firestore Rules enforce authorization on Google's servers. The browser reducer is input validation, never the security boundary.
+`index.html` → `src/main.tsx` → existing React UI. Vite outputs `dist-firebase/`, served by Firebase Hosting. Google Auth identifies the real actor; Firestore Rules enforce authorization on Google's servers. The browser reducer is input validation, never the security boundary.
 
-| File | Responsibility |
-| --- | --- |
-| `lib/domain.mjs` | Pure transitions, demo seeds, input validation, explainable matching |
-| `firebase/client.ts` | Runtime Firebase config, session, invite check, demo/live routing |
-| `lib/firebase-store.mjs` | Normalized records, scoped queries, atomic writes |
-| `firestore.rules` | Authoritative read/write permissions, schemas and acceptance invariants |
-| `app/crosscampus.tsx` | Screens and forms; clears loaded data on auth change |
-| `tests/firebase/rules.test.mjs` | Real SDK against Firestore Rules emulator, including races |
-| `firebase.json`, `.firebaserc` | Hosting / Rules deployment target |
+| File                            | Responsibility                                                          |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `src/lib/domain.mjs`            | Pure transitions, demo seeds, input validation, explainable matching    |
+| `src/firebase/client.ts`        | Runtime Firebase config, session, invite check, demo/live routing       |
+| `src/lib/firebase-store.mjs`    | Normalized records, scoped queries, atomic writes                       |
+| `firestore.rules`               | Authoritative read/write permissions, schemas and acceptance invariants |
+| `src/app.tsx`                   | Screens and forms; clears loaded data on auth change                    |
+| `tests/firebase/rules.test.mjs` | Real SDK against Firestore Rules emulator, including races              |
+| `firebase.json`, `.firebaserc`  | Hosting / Rules deployment target                                       |
 
 ## Demo and real data
 
@@ -43,12 +43,10 @@ Read queries filter applications by current user or project owner. Loading sprin
 
 Lists currently load at most 100 projects, 200 profiles, and 200 applications in each own/incoming query. Results beyond those caps are not visible; no pagination is implemented. Writes reload those bounded lists, consuming Firestore reads. This is a small invited pilot, not an unbounded public network. Keep usage visible in the console; add pagination, incremental loading, moderation, abuse controls and evaluated App Check before broader enrollment. Security Rules prevent unauthorized access but are not a general rate limiter.
 
-## T01 extension
+## Outcomes extension
 
 Implement outcomes and feedback as Firestore subcollections beneath `sprints/{projectId}` with team-only Rules. Keep optional arrays in the demo view model for old localStorage compatibility. Extend both the reducer and the live adapter; client-only work is incomplete. Read the task's URL, author and deletion requirements. Do not add paid server infrastructure for this task.
 
-## Previous Sites implementation
+## Historical implementation
 
-`app/api/world/route.ts`, `db/`, `drizzle/`, `worker/`, `.openai/` and Sites scripts are historical migration references. The old API trusted Sites identity headers and must never be exposed as an independent server. The previous live Site and D1 are untouched. Inventory during migration found only one demo row, no live workspace. No real student data was copied or deleted. The old demo stays on the old private Site; Firebase starts a fresh browser-local demo.
-
-For rollback use the Git version `e5a1b47`, not the current Firebase UI with the historical API. Credentials and local admin settings never enter Git or ZIP exports.
+The earlier Sites/D1 prototype remains in Git at `e5a1b47`. Its server and template dependencies are not part of the current Firebase application. Use that revision only when investigating the former implementation; current development starts from the Firebase architecture above.

@@ -1,30 +1,25 @@
-# Crosscampus agent instructions
+# Repository guidance
 
-Read `README.md`, `docs/ARCHITECTURE.md`, and the assigned task before editing.
+Read `README.md`, `CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, and the assigned issue/specification before editing.
 
-## Product contract
+## Product and data
 
-- Preserve the distinction between fictional demo workspaces and real projects.
-- Never present sample users, school affiliations, accepted demo applications, or completed demo tasks as real traction.
-- No fake AI output, fabricated verification badge, fake matching percentage, or fabricated Git authorship/history.
-- Existing features must keep working: discover/filter/save, profiles, projects, applications, decisions and first-sprint board.
-- Keep all private authorization in Firestore Security Rules, enforced on the server. Live actor comes only from authenticated identity. Never trust a client-supplied actor for live writes.
-- Do not expose another student's application note, contact information, or private team content.
-- The Firebase demo is public; real data is invite-only. Do not expand live access, message students, or send invitations unless the human requests it.
+- Preserve discovery → proposal → acceptance → first-sprint behavior.
+- Keep fictional demo data separate from real projects and label it clearly.
+- Live identity comes from Firebase Auth. Enforce private reads, writes, and invariants in Firestore Security Rules.
+- Application notes are private to the applicant and leader; sprint content is team-only. Do not add contact details to public profiles.
+- Keep old demo payloads compatible when adding optional fields.
 
 ## Implementation
 
-- Primary team task is `docs/tasks/T01-sprint-outcomes.md`. Do that task only unless the user assigns a different task.
-- Keep changes small enough to review; do not replace the app or upgrade the framework incidentally.
-- Extract a focused UI component if touching the large main component; preserve the visual language.
-- `lib/domain.mjs` owns pure state transitions and validation. Avoid mutating its input.
-- `visibleWorld` is the demo projection; Firestore Rules and scoped queries protect live data. Extend and test both paths.
-- Backward compatibility: older browser demo worlds may lack newly added optional fields. Live data uses normalized Firestore documents.
-- Migrations already applied are immutable. Append migrations if the actual database schema changes.
-- Use actual current dates and honest Git identity. No backdating, fake commits, or attribution to another teammate.
+- `src/lib/domain.mjs` contains pure validation and demo transitions; do not mutate its input.
+- `src/lib/firebase-store.mjs` and `firestore.rules` define the live persistence contract. Extend and test both for data features.
+- Extract a focused component when adding substantial UI to `src/app.tsx`.
+- Avoid unrelated framework upgrades and preserve the existing visual language.
+- Use real authorship and current commit dates. Keep credentials and local runtime state out of Git.
 
-## Verification and handoff
+## Verification and delivery
 
-Run `npm test`, `npm run test:rules` (Java 21+), `npm run typecheck`, and `npm run build`. Add tests for changed permission or business rules. Inspect the relevant UI at desktop and narrow widths when browser tools are available. If a tool is unavailable, report the limit rather than claiming a pass.
+Run `npm test`, `npm run test:rules`, `npm run typecheck`, `npm run format:check`, and `npm run build`. Add tests for changed permissions or business rules. Check affected UI at desktop and narrow widths when available; report any verification limits.
 
-Update the assigned task status and `docs/STATUS.md` with verified outcomes. Create a feature branch and a reviewable PR when remote access exists; do not merge. If no remote or Git identity is configured, finish local implementation and supply exact next steps. Do not access personal credentials or change global Git settings.
+Work on a feature branch and open a reviewable PR. Do not merge, deploy, change access, or contact users unless explicitly requested. Update the relevant documentation and describe the actual implementation, assistance, and verification in the PR.
