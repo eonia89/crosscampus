@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=24.12.0"
   },
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
@@ -81,5 +81,6 @@
     "miniflare": {
       "sharp": "0.35.4"
     }
-  }
+  },
+  "packageManager": "npm@11.6.2"
 }
