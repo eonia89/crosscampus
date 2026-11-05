@@ -2,14 +2,23 @@
 
 이 문서와 **저장소 URL 또는 소스 ZIP**을 팀원의 코딩 에이전트에게 전달하면 됩니다. 기본 MVP는 이미 구현되어 있습니다. 팀원은 아래 제품 기능을 실제로 개발합니다.
 
+저장소: https://github.com/eonia89/crosscampus (비공개). 소유자에게 협업자 접근 권한을 받은 다음 clone하세요. 저장소 접근 권한과 비공개 서비스 미리보기 접근 권한은 별개입니다.
+
+작업 이슈: https://github.com/eonia89/crosscampus/issues/1
+
 ## 에이전트에 붙여넣을 지시문
 
 ```text
 Crosscampus 프로젝트에 기여해 줘.
 
+저장소는 https://github.com/eonia89/crosscampus 야.
+현재 폴더가 이 저장소가 아니라면 접근 권한을 확인한 뒤 새 폴더에 clone해.
+다른 작업의 폴더를 덮어쓰지 마.
+
 먼저 이 저장소의 AGENTS.md, README.md, docs/ARCHITECTURE.md,
 docs/tasks/T01-sprint-outcomes.md를 읽고 현재 구현을 확인해.
 내 담당 작업은 T01 '첫 스프린트 결과물 & 회고'야.
+작업 이슈는 https://github.com/eonia89/crosscampus/issues/1 이야.
 
 기존 탐색·지원·수락·실행 보드 흐름을 유지하면서,
 합류한 팀원이 첫 주 결과물 링크와 짧은 회고를 남기고,
@@ -26,7 +35,8 @@ npm test, npm run typecheck, npm run build를 실행하고,
 브라우저로 팀원/비팀원 권한과 저장 후 새로고침을 검증해.
 실행 결과와 한계를 docs/STATUS.md에 기록해.
 GitHub 접근이 가능하면 현재 저장소를 대상으로 PR을 만들고,
-없으면 검증된 코드와 커밋을 로컬에 남겨.
+기능을 완료했다면 PR 설명에 Closes #1을 포함해.
+GitHub 접근이 없으면 검증된 코드와 커밋을 로컬에 남겨.
 배포·공개 전환·PR 병합·외부 메시지는 하지 마.
 최종 답변에는 변경 기능, 테스트 결과, 커밋/PR, 남은 문제를 알려줘.
 ```

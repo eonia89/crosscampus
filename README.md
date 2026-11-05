@@ -6,19 +6,22 @@
 
 ## 바로 살펴보기
 
+- GitHub: [eonia89/crosscampus](https://github.com/eonia89/crosscampus) (비공개)
+- 서비스: [Crosscampus 비공개 미리보기](https://crosscampus-first-sprint.free-tiger-9074.chatgpt.site/) (소유자 ChatGPT 계정으로 로그인)
 - 핵심 흐름: **발견 → 역할별 지원 → 리더 수락 → 첫 주 실행 보드**
 - `체험 공간`: 가상 학교·학생·프로젝트 6개. Jin / Mina / Yuri로 관점을 바꿔 전체 흐름을 검증합니다. 로그인 계정별로 분리되어 저장됩니다.
 - `실제 프로젝트`: 실제 로그인 계정의 프로필·모집·지원·실행 보드를 서버에 저장합니다. 체험 데이터와 섞이지 않습니다.
 - 현재 단계: **기능을 평가할 수 있는 비공개 초기 MVP**. 실제 학생 모집, 재학 인증, 운영 대응, 시장 수요 검증은 아직 수행하지 않았습니다.
 - 매칭은 역할과 시간에 따른 설명 가능한 규칙입니다. LLM API나 AI 추천이라고 표시하지 않습니다.
 
-## 내일 팀원에게 전달할 것
+## 팀원에게 전달할 것
 
 **[TEAMMATE_START_HERE.md](TEAMMATE_START_HERE.md)의 복사 블록과 이 저장소/소스 ZIP을 전달하세요.**
 
 팀원 담당 기능은 **첫 스프린트 결과물과 회고 기록**입니다. 실제 구현해야 할 제품 기능으로, 현재 구현과 겹치지 않게 범위·데이터 계약·권한·완료 조건·테스트를 정했습니다.
 
 - [팀원 에이전트 시작 지시문](TEAMMATE_START_HERE.md)
+- [팀원 작업 이슈 #1](https://github.com/eonia89/crosscampus/issues/1)
 - [T01: 첫 스프린트 결과물 & 회고](docs/tasks/T01-sprint-outcomes.md)
 - [제품 기획과 검증 계획](docs/PRODUCT.md)
 - [구조와 데이터 계약](docs/ARCHITECTURE.md)
