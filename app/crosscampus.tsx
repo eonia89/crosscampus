@@ -39,6 +39,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { categories, skills, modes, getMatch } from "../lib/domain.mjs";
+import { loadWorld, sendCommand, watchSession, login, logout, friendlyError } from "../firebase/client";
 type Item = Record<string, any>;
 const nav = [
   ["discover", "프로젝트 발견", Compass],
@@ -165,6 +166,8 @@ function Empty({
   );
 }
 export default function Crosscampus() {
+  const authEpoch = useRef(0);
+  const [signedIn, setSignedIn] = useState(false);
   const [data, setData] = useState<Item | null>(null),
     [error, setError] = useState(""),
     [mode, setMode] = useState("demo"),
@@ -181,22 +184,21 @@ export default function Crosscampus() {
     [toast, setToast] = useState(""),
     [mobileNav, setMobileNav] = useState(false),
     [revision, setRevision] = useState(0);
-  const endpoint = `/api/world?mode=${mode}&actor=${encodeURIComponent(actor)}`;
+  useEffect(() => watchSession((signed) => { authEpoch.current++; setSignedIn(signed); setData(null); setRevision(r => r + 1); }), []);
   useEffect(() => {
-    const controller = new AbortController();
-    setError("");
-    setData(null);
-    fetch(endpoint, { signal: controller.signal })
-      .then(async (r) => {
-        const d = (await r.json()) as Item;
-        if (!r.ok) throw new Error(d.error);
-        setData(d);
-      })
-      .catch((e) => {
-        if (e.name !== "AbortError") setError(e.message);
-      });
-    return () => controller.abort();
-  }, [endpoint, revision]);
+    let active = true;
+    setError(""); setData(null);
+    loadWorld(mode, actor).then(d => { if(active) setData(d); })
+      .catch(e => { if(active) setError(friendlyError(e)); });
+    return () => { active = false; };
+  }, [mode, actor, revision]);
+  async function signIn() {
+    if(busy) return;
+    setBusy(true);
+    try { await login(); setModal(""); setMode("live"); setRevision(r=>r+1); }
+    catch(e) { setToast(friendlyError(e)); }
+    finally { setBusy(false); }
+  }
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -205,19 +207,15 @@ export default function Crosscampus() {
   async function action(command: Item, message = "저장했어요.") {
     if (busy) return false;
     setBusy(true);
+    const epoch = authEpoch.current;
     try {
-      const r = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(command),
-      });
-      const d = (await r.json()) as Item;
-      if (!r.ok) throw new Error(d.error);
+      const d = await sendCommand(mode, actor, command);
+      if(epoch !== authEpoch.current) return false;
       setData(d);
       setToast(message);
       return true;
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "저장하지 못했어요.");
+      setToast(friendlyError(e));
       return false;
     } finally {
       setBusy(false);
@@ -260,14 +258,14 @@ export default function Crosscampus() {
     setSelected(null);
   }
   function startCreate() {
-    if (!data?.authenticated) {
+    if (mode !== "demo" && !data?.authenticated) {
       setModal("signin");
       return;
     }
     setModal(me ? "create" : "profile");
   }
   function openProfile() {
-    setModal(data?.authenticated ? "profile" : "signin");
+    setModal(mode === "demo" || data?.authenticated ? "profile" : "signin");
   }
   const navTitle = nav.find((n) => n[0] === view)?.[1] ?? "프로젝트 발견";
   function Card({ p }: { p: Item }) {
@@ -447,7 +445,7 @@ export default function Crosscampus() {
                 className={mode === "live" ? "selected" : ""}
                 disabled={busy}
                 onClick={() => {
-                  if (!data?.authenticated) {
+                  if (!signedIn) {
                     setModal("signin");
                     return;
                   }
@@ -460,6 +458,7 @@ export default function Crosscampus() {
                 실제 프로젝트
               </button>
             </div>
+            {signedIn && <button className="btn small" disabled={busy} onClick={async()=>{setBusy(true);try{await logout();setMode("demo");setSelected(null);setModal("");setRevision(r=>r+1);}catch(e){setToast(friendlyError(e));}finally{setBusy(false);}}}>로그아웃</button>}
             <button className="btn primary small" onClick={startCreate}>
               <Plus size={16} /> 프로젝트 만들기
             </button>
@@ -469,7 +468,7 @@ export default function Crosscampus() {
           <span>
             <span className="status-dot" />
             {mode === "demo"
-              ? "샘플 학교와 학생으로 팀 만들기를 체험해 보세요. 변경 내용은 내 체험 공간에만 저장돼요."
+              ? "샘플 학교와 학생으로 팀 만들기를 체험해 보세요. 변경 내용은 이 브라우저에만 저장돼요."
               : "초기 비공개 파일럿 · 학교 정보는 자기소개이며 재학 인증을 뜻하지 않아요."}
           </span>
           {mode === "demo" && (
@@ -1102,7 +1101,7 @@ export default function Crosscampus() {
             actor={activeActor}
             me={me}
             busy={busy}
-            authenticated={data?.authenticated}
+            authenticated={mode === "demo" || data?.authenticated}
             onAction={action}
             onProfile={() => {
               setSelected(null);
@@ -1164,13 +1163,10 @@ export default function Crosscampus() {
         >
           <div className="modal-body">
             <p>로그인하면 프로젝트와 지원 내용을 저장할 수 있어요.</p>
-            <a
-              className="btn primary"
-              href="/signin-with-chatgpt?return_to=/"
-              target="_top"
-            >
-              ChatGPT로 로그인 <ArrowRight size={16} />
-            </a>
+            <button className="btn primary" onClick={signIn} disabled={busy}>
+              Google로 로그인 <ArrowRight size={16} />
+            </button>
+            <p>실제 프로젝트는 초대된 계정만 이용할 수 있어요.</p>
           </div>
         </Modal>
       )}
@@ -1238,7 +1234,7 @@ export default function Crosscampus() {
             </p>
             <p>
               실제 프로젝트에서는 로그인한 계정의 프로필과 활동을 저장합니다.
-              현재 사이트는 비공개이며 초대된 계정만 접근할 수 있습니다. 학교
+              체험 화면은 누구나 볼 수 있고, 실제 프로젝트는 초대된 계정만 접근할 수 있습니다. Google 로그인 정보 중 이메일은 초대 여부 확인에 사용하며 프로젝트 프로필에 공개하지 않습니다. 학교
               정보는 사용자가 입력하며 재학 인증이나 학교와의 제휴를 뜻하지
               않습니다.
             </p>
@@ -1721,13 +1717,9 @@ function ProjectDetail({
                 프로필 만들고 함께하기
               </button>
             ) : !authenticated ? (
-              <a
-                className="btn primary full"
-                href="/signin-with-chatgpt?return_to=/"
-                target="_top"
-              >
+              <button className="btn primary full" onClick={onProfile}>
                 로그인하고 함께하기
-              </a>
+              </button>
             ) : (
               <form
                 className="form"

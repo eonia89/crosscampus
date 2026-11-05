@@ -1,49 +1,54 @@
 # Architecture and contracts
 
-## Files
+## Current runtime: Firebase Spark
+
+`index.html` → `firebase/main.tsx` → existing React UI. Vite outputs `dist-firebase/`, served by Firebase Hosting. Google Auth identifies the real actor; Firestore Rules enforce authorization on Google's servers. The browser reducer is input validation, never the security boundary.
 
 | File | Responsibility |
 | --- | --- |
-| `lib/domain.mjs` | Pure business transitions, validation, projection, demo seeds, match explanation |
-| `app/api/world/route.ts` | Authentication, origin/content checks, D1 persistence, compare-and-swap |
-| `app/crosscampus.tsx` | Client screens, forms, state loading and actions |
-| `app/globals.css` | Responsive product design |
-| `app/chatgpt-auth.ts` | Maintained Sites identity helper |
-| `db/schema.ts`, `drizzle/` | Persistent workspace schema and immutable migrations |
-| `tests/domain.test.mjs` | Authorization and product invariant tests |
+| `lib/domain.mjs` | Pure transitions, demo seeds, input validation, explainable matching |
+| `firebase/client.ts` | Runtime Firebase config, session, invite check, demo/live routing |
+| `lib/firebase-store.mjs` | Normalized records, scoped queries, atomic writes |
+| `firestore.rules` | Authoritative read/write permissions, schemas and acceptance invariants |
+| `app/crosscampus.tsx` | Screens and forms; clears loaded data on auth change |
+| `tests/firebase/rules.test.mjs` | Real SDK against Firestore Rules emulator, including races |
+| `firebase.json`, `.firebaserc` | Hosting / Rules deployment target |
 
-## API
+## Demo and real data
 
-`GET /api/world?mode=demo|live&actor=demo-jin|demo-mina|demo-yuri`
+Demo is fictional, locally persisted per browser and current Firebase UID (or guest). Switching demo actors is simulation only. Reset affects the selected browser's demo key. It neither resets Firestore nor imports demo activity into real projects. `visibleWorld` remains the demo privacy projection.
 
-Returns `{world, actor, authenticated, mode, revision}`. Anonymous requests receive a read-only demo snapshot. Authenticated demo data is scoped to `demo:<actual-user-id>`. Only these three predefined simulated actors can be selected in a demo workspace.
+Live mode requires a verified Google email plus `access/{email}.enabled == true`. Only the Firebase project administrator can grant access. Firestore Rules independently repeat this check on every permitted operation. Profiles contain no email/contact data; they are readable by invited users. Application notes belong to applicant and owner only. Team data is restricted by authoritative project membership. Reports are create-only for users and readable only through administrator tooling.
 
-The live workspace key is `live`; live actor always comes from `oai-authenticated-user-id` through the Sites helper. A client actor query parameter cannot impersonate another real person. Hosted Sites dispatch owns identity headers; do not expose this Worker directly without an equivalent trusted authentication boundary.
+## Collections
 
-`POST` to the same URL accepts one domain command, uses JSON only, requires same-origin and authenticated identity, and returns the updated privacy-projected world. API errors contain a human-readable `error`. Caller must preserve the draft on failure.
+- `access/{verifiedEmail}`: `{enabled: boolean}`, admin-maintained. Caller can get their own entry, never list or change it.
+- `profiles/{uid}`: display profile, own writes; all invited users may read.
+- `projects/{uuid}`: public-within-pilot project fields plus `deadlineAt` epoch ms, `createdAt` server timestamp, `memberIds`, `filledRoles` role→UID, `lastAcceptedUid`.
+- `counters/{uid}`: monotonic project count and last project ID, coupled to project creation (20 per user).
+- `applications/{projectId}__{uid}`: deterministic record, ownerId, role, note, status, server timestamp. One application per person/project. Reapplying after rejection/withdrawal overwrites that record; this version does not preserve application history.
+- `sprints/{projectId}` and `tasks/{taskId}` subcollection: kickoff goal/meeting and validated tasks. Only team members can read/edit allowed fields.
+- `users/{uid}/bookmarks/{projectId}`: own records.
+- `reports/{projectId}__{uid}`: deduplicated private report.
 
-Actions: `profile`, `create`, `bookmark`, `apply`, `withdraw`, `decide`, `task`, `kickoff`, `close`, `report`. `reset` only resets the caller's demo workspace.
+The adapter reconstructs the existing `world` view model for the UI. Caller identity always comes from Firebase Auth; passing another UID to an SDK call cannot bypass Rules.
 
-## State
+## Transactions and rules
 
-`world = {version, profiles, projects, applications, bookmarks, sprints, reports}`.
+Creation atomically increments a counter and creates its project. Acceptance reads application/project/sprint then atomically changes pending→accepted, fills exactly one role, adds exactly one member, and creates or extends the sprint. `getAfter` couples writes across documents. Concurrent acceptances for the same role cannot both commit. Later acceptances preserve prior task completion and kickoff text. Users cannot mint membership or counters independently.
 
-Projects have one open slot per role. Application status is pending/accepted/rejected/withdrawn. Only pending applications can be withdrawn or decided. Acceptance opens one sprint and adds a small role-specific first task for each accepted member. Owners and accepted members can edit its goal, meeting and tasks.
+Read queries filter applications by current user or project owner. Loading sprints is limited to joined projects. An auth session change clears the UI; an epoch guard prevents an older mutation response from rendering as the new user.
 
-`visibleWorld` exposes application notes only to applicant and project owner, sprint data only to team members, bookmarks only to their owner, and no report contents. Aggregate team counts/filled roles are visible without application notes. Profile name/school/skills/bio are visible within the authenticated space and this is disclosed in the profile form. No email or contact address is stored in domain data.
+## Pilot limits
 
-## ADR-001: versioned JSON workspace in D1
+Lists currently load at most 100 projects, 200 profiles, and 200 applications in each own/incoming query. Results beyond those caps are not visible; no pagination is implemented. Writes reload those bounded lists, consuming Firestore reads. This is a small invited pilot, not an unbounded public network. Keep usage visible in the console; add pagination, incremental loading, moderation, abuse controls and evaluated App Check before broader enrollment. Security Rules prevent unauthorized access but are not a general rate limiter.
 
-This MVP deliberately stores the small workspace as a JSON payload with a numeric revision. A write reads state, executes the pure reducer, then updates `WHERE revision = previousRevision`. It retries three times and reports a conflict rather than overwriting newer data. Business rules (role capacity, duplicate application, access) therefore evaluate against current state on each retry.
+## T01 extension
 
-Pros: easy pure testing, atomic transitions across applications and sprints, fast teammate onboarding. Limits: one live workspace is a contention/size bottleneck; not suitable for an unbounded public network. It has a 1.5 MB payload guard and 20 owned projects per user, but lacks a full scalable rate-limiting policy. Before broader rollout normalize profiles/projects/applications/membership and paginate. Do not describe this as production scale.
+Implement outcomes and feedback as Firestore subcollections beneath `sprints/{projectId}` with team-only Rules. Keep optional arrays in the demo view model for old localStorage compatibility. Extend both the reducer and the live adapter; client-only work is incomplete. Read the task's URL, author and deletion requirements. Do not add paid server infrastructure for this task.
 
-Demo and live use the same reducer but different database keys. A demo actor switch is a simulation feature, not authentication or a real school account.
+## Previous Sites implementation
 
-## Extending
+`app/api/world/route.ts`, `db/`, `drizzle/`, `worker/`, `.openai/` and Sites scripts are historical migration references. The old API trusted Sites identity headers and must never be exposed as an independent server. The previous live Site and D1 are untouched. Inventory during migration found only one demo row, no live workspace. No real student data was copied or deleted. The old demo stays on the old private Site; Firebase starts a fresh browser-local demo.
 
-Add optional collections with default empty arrays when reading old payloads. Do not reset saved user state. Extend the privacy projection when adding private team records. T01 should use this path without a SQL migration. If database columns change, generate a new migration; never edit an applied one.
-
-## Deployment
-
-Hosted source and deployment use the Sites workflow. `.openai/hosting.json` identifies the current private site and D1 binding. No application API secret is required. Source credentials, local auth cookies, D1 local state, runtime directories and dependency artifacts must not enter Git or the deliverable ZIP.
+For rollback use the Git version `e5a1b47`, not the current Firebase UI with the historical API. Credentials and local admin settings never enter Git or ZIP exports.

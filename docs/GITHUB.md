@@ -8,39 +8,13 @@ The human signed into GitHub as `eonia89`; the assistant created this private re
 
 Team task: https://github.com/eonia89/crosscampus/issues/1. The copyable agent prompt is in `TEAMMATE_START_HERE.md`.
 
-Sites source synchronization is a separate managed remote. GitHub is the source collaboration destination; the private Sites preview has its own access controls.
+GitHub is the collaboration destination. Firebase Hosting serves the new demo, and Firestore real data has separate invite controls. The previous Sites deployment remains untouched.
 
-## Publish to your own new repository
+## Current migration branch
 
-The original repository already exists at `https://github.com/eonia89/crosscampus.git`. Do not create a duplicate. Use an authenticated Git client with access to this private repository.
+Firebase work is on `feat/firebase-hosting`. Open a PR against `main` and keep it reviewable; do not merge automatically. T01 should branch from the Firebase branch until that PR is merged, then from main. Check actual remotes before pushing. Never overwrite the managed Sites remote, force-push ZIP history, or put tokens in URLs.
 
-If using the terminal, first check the actual remotes and your own Git identity:
-
-```sh
-git remote -v
-git status
-git config user.name
-git config user.email
-```
-
-When the checkout already has the Sites managed remote, add a separate `github` remote rather than replacing it:
-
-```sh
-git remote add github https://github.com/eonia89/crosscampus.git
-git push -u github HEAD:main
-```
-
-Use ordinary GitHub login/SSH authentication. Never put a token in a remote URL or a committed file. If a `github` remote already exists, inspect it instead of overwriting it. Prefer cloning the repository (or the provided Git bundle) to preserve history. Do not force-push a freshly initialized ZIP over existing history.
-
-The source ZIP intentionally excludes `.git`. For a fresh ZIP checkout, configure your genuine Git identity if needed, then:
-
-```sh
-git init -b main
-git add .
-git commit -m "Add Crosscampus working MVP and contributor handoff"
-git remote add origin <YOUR_EMPTY_GITHUB_REPOSITORY_URL>
-git push -u origin main
-```
+The Git bundle preserves history; the ZIP is a snapshot. Prefer clone/bundle for contributions. Verify your real Git identity locally before committing. GitHub credentials and Firebase CLI credentials are separate and never included in the source archive.
 
 ## Team contribution
 

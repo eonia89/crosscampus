@@ -4,6 +4,8 @@
 
 저장소: https://github.com/eonia89/crosscampus (비공개). 소유자에게 협업자 접근 권한을 받은 다음 clone하세요. 저장소 접근 권한과 비공개 서비스 미리보기 접근 권한은 별개입니다.
 
+Firebase 이전은 `feat/firebase-hosting` 브랜치입니다. 아직 main에 병합되지 않았다면 이 브랜치에서 작업 브랜치를 만들고 PR의 base도 해당 브랜치로 지정하세요. 이전 Sites 코드 기준으로 구현하지 마세요.
+
 작업 이슈: https://github.com/eonia89/crosscampus/issues/1
 
 ## 에이전트에 붙여넣을 지시문
@@ -15,7 +17,11 @@ Crosscampus 프로젝트에 기여해 줘.
 현재 폴더가 이 저장소가 아니라면 접근 권한을 확인한 뒤 새 폴더에 clone해.
 다른 작업의 폴더를 덮어쓰지 마.
 
-먼저 이 저장소의 AGENTS.md, README.md, docs/ARCHITECTURE.md,
+먼저 git fetch 후 feat/firebase-hosting의 병합 여부를 확인해.
+미병합이면 그 브랜치에서 feat/sprint-outcomes를 만들고 PR base도 그 브랜치로 해.
+병합되었으면 최신 main을 기준으로 진행해.
+
+이 저장소의 AGENTS.md, README.md, docs/ARCHITECTURE.md,
 docs/tasks/T01-sprint-outcomes.md를 읽고 현재 구현을 확인해.
 내 담당 작업은 T01 '첫 스프린트 결과물 & 회고'야.
 작업 이슈는 https://github.com/eonia89/crosscampus/issues/1 이야.
@@ -31,7 +37,8 @@ docs/tasks/T01-sprint-outcomes.md를 읽고 현재 구현을 확인해.
 실제 내 Git identity를 사용하고, 의미 있는 변경 단위로 커밋해.
 다른 사람의 작성자로 기록하거나 커밋 날짜를 바꾸지 마.
 
-npm test, npm run typecheck, npm run build를 실행하고,
+Firebase 실제 저장과 Rules, 브라우저 체험 양쪽에 구현해.
+Java 21+를 준비하고 npm test, npm run test:rules, npm run typecheck, npm run build를 실행하고,
 브라우저로 팀원/비팀원 권한과 저장 후 새로고침을 검증해.
 실행 결과와 한계를 docs/STATUS.md에 기록해.
 GitHub 접근이 가능하면 현재 저장소를 대상으로 PR을 만들고,

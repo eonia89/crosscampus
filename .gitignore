@@ -43,3 +43,9 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+# Firebase build and local emulator state
+/dist-firebase/
+/.firebase/
+*-debug.log
+/firebase-config.local.json

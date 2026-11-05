@@ -3,6 +3,7 @@
 Status: **READY / NOT IMPLEMENTED**
 Owner: teammate + their coding agent
 Suggested branch: `feat/sprint-outcomes`
+Base: `feat/firebase-hosting` until its migration PR is merged; then latest `main`.
 
 ## Problem
 
@@ -21,7 +22,7 @@ No global showcase, auto-generated recommendation, file upload, external notific
 
 ## Suggested data contract
 
-Prefer optional arrays on the existing `world` object. No new SQL migration is needed if only JSON payload structure changes.
+Live records must use `sprints/{projectId}/outcomes/{outcomeId}` and nested `feedback/{feedbackId}` collections, with explicit Firestore Rules. Reconstruct optional arrays in the UI world for compatibility; the arrays below are view-model contracts, not a single live JSON blob. No SQL migration is needed.
 
 ```ts
 outcomes?: Array<{
@@ -45,22 +46,24 @@ feedback?: Array<{
 }>;
 ```
 
-Defaults for old saved worlds are `[]`. Do not overwrite or reset the world on upgrade. Set a sensible bounded per-team record count (for example 20 outcomes and 100 comments), and document it.
+Defaults for old browser demo worlds are `[]`. Do not overwrite or reset state on upgrade. Bound each team to 20 outcomes and each outcome to 20 feedback notes using a validated transactional counter; enforce both in Rules, not only UI. The small feedback bound also makes atomic deletion practical.
 
 ## Domain actions
 
 Add `outcome.create`, `outcome.update`, `outcome.delete`, `feedback.create` to `lib/domain.mjs`.
 
-- Derive identity only from the server actor, never a request body userId.
-- Use `canJoinSprint` plus an existing sprint check for reads and writes.
+- For live records bind identity to `request.auth.uid` in Rules; use the current Firebase UID in the adapter, never a request body userId.
+- Demo: use `canJoinSprint` plus an existing sprint check. Live: use authoritative project `memberIds`, invite access and existing sprint checks in Rules for reads and writes.
 - Project leader and accepted applicants are members. Pending/rejected/withdrawn applicants are not.
 - Validate URLs with `new URL`, require `https:`, reject embedded credentials, localhost/loopback URLs and invalid syntax. Do not fetch links server-side or generate previews.
 - Render links as escaped text with `target="_blank" rel="noopener noreferrer"`.
-- Delete feedback belonging to a deleted outcome in the same transition.
+- Delete feedback belonging to a deleted outcome in the same atomic batch. Use `getAfter`/`existsAfter` with the bounded count to ensure no orphan comments. Rules must permit the outcome author to delete its comments only as part of deleting that outcome.
 - For this version, feedback is append-only. No notifications or arbitrary user lookup.
-- `visibleWorld` must exclude all outcomes and feedback belonging to teams the actor cannot access.
+- `visibleWorld` must exclude other-team demo records. Firestore Rules must independently reject outsider reads/writes, including direct SDK calls. Load only joined-team records in the live adapter.
 
-The API route already applies authentication, origin checks, size bounds and optimistic concurrency. Preserve them. Increase the body limit only if requirements actually need it (current content should fit).
+Extend `lib/firebase-store.mjs`, `firebase/client.ts` as needed, `firestore.rules`, and `tests/firebase/rules.test.mjs`. Do not route new live features through the historical Sites API. Use server timestamps, immutable creator/project fields, and transactional counters. Add meaningful Rules tests for author-only changes, outsider denial, forged fields and concurrent limit/deletion races.
+
+Validate HTTPS links in the reducer with `new URL`. Firestore Rules must also reject unsafe scheme/credentials/loopback, restrict length and schema; a malicious client can bypass reducer validation. Document any deliberately stricter Rules URL constraints. No server-side fetch, preview service or Cloud Functions.
 
 ## UI integration points
 
@@ -76,7 +79,7 @@ The API route already applies authentication, origin checks, size bounds and opt
 - [ ] Leader can submit an outcome; accepted member can read it and comment.
 - [ ] Accepted member can submit/edit/delete their own outcome.
 - [ ] Another member cannot edit/delete that outcome.
-- [ ] Outsider and pending applicant cannot read or write outcomes/feedback even by direct API request.
+- [ ] Outsider and pending applicant cannot read or write outcomes/feedback even by direct Firestore SDK request.
 - [ ] Reject `javascript:`, `http:`, credential-bearing, loopback and malformed URLs.
 - [ ] Input text is escaped and never inserted as HTML.
 - [ ] Refresh retains outcomes/feedback.
@@ -85,7 +88,7 @@ The API route already applies authentication, origin checks, size bounds and opt
 - [ ] Changing demo actor does not cross workspace or live identity boundaries.
 - [ ] Desktop and 390px mobile view are usable with keyboard-accessible labels.
 - [ ] Existing 15+ domain tests still pass; add meaningful tests for the new invariants.
-- [ ] `npm test`, `npm run typecheck`, `npm run build` pass.
+- [ ] `npm test`, `npm run test:rules`, `npm run typecheck`, `npm run build` pass.
 
 ## Suggested real commit units
 

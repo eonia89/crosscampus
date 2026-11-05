@@ -2,7 +2,7 @@
 
 ## Demo space
 
-1. Open the service, sign in if prompted, and leave `체험 공간` selected.
+1. Open the Firebase service without signing in and leave `체험 공간` selected.
 2. As Jin, browse by role/time. Open `바다의 목소리를, 5분의 영화로.`.
 3. Choose 디자인, write a concrete first-week proposal, and submit.
 4. Switch to Mina using `체험 역할`; open 모집 관리 and accept Jin.
@@ -26,4 +26,4 @@ This is an early working prototype built with AI-assisted development. These are
 
 “I recently built Crosscampus, an early prototype for students at different international schools to form small project teams and complete their first sprint. The working flow includes project discovery, role-specific applications, leader decisions and persistent team kickoff boards. I used AI coding tools for implementation and tested the core flows. I am currently validating the problem; the demo uses fictional participants.”
 
-Only claim testing you personally performed or clearly attribute assisted testing. Add actual feedback/results only after they exist. The deployed preview is private; a reviewer needs an authorized sharing route, a recorded demo, or the source. Do not submit an inaccessible private URL as if it were public.
+Only claim testing you personally performed or clearly attribute assisted testing. Add actual feedback/results only after they exist. The Firebase demo can be shared once deployment is verified in STATUS. Actual projects remain invite-only. The historical Sites URL is owner-private.
