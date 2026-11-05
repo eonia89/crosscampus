@@ -1,50 +1,39 @@
-# Product brief — Crosscampus
+# Product brief
 
-## One-sentence proposition
+## User and problem
 
-한국 국제학교 고등학생이 관심사·역할·가능한 시간으로 학교 밖 팀을 만들고, 작은 첫 작업을 함께 시작한다.
+The initial audience is international-school students in Korea, grades 9–12, who want to make something with peers beyond their own school.
 
-## The initial hypothesis
+Our hypothesis is that recruiting through friends or group chats leaves two questions unresolved: whether another student has a complementary skill and whether both students can commit to the same small piece of work. A vague project invitation also gives a prospective member little basis for deciding to join.
 
-A student with an idea can ask friends or post in group chats, but may struggle to find people outside their school with a complementary role and realistic availability. Joining a vaguely described project is also hard: students need to know what they will actually do.
+This hypothesis has not yet been tested through student interviews or a live pilot.
 
-These are **hypotheses**, not validated interview findings. We have not recruited students or measured conversion.
+## Product approach
 
-## The service concept
+Each project names a concrete outcome, short duration, open roles, working language, and weekly time commitment. A proposal describes what the applicant can contribute during the first week. Acceptance creates a private kickoff board for the team.
 
-Every project starts with a small concrete outcome, a short duration, weekly hours, collaboration language, mode and specific open roles. The applicant proposes what they can do in week one. Acceptance opens a first-sprint board.
+The central product question is whether this sequence helps a team reach its first shared draft or result. Discovery and a successful match are intermediate steps.
 
-The differentiator to test is the transition **from finding people to making the first thing together**. Future outcome/feedback records should follow demonstrated work, not popularity, school prestige or an invented match percentage.
+## Current scope
 
-## Initial segment
+Implemented: discovery and filters, saved projects, profiles, project creation, role proposals, leader decisions, and first-week goals/tasks. Matching uses explicit role and availability rules.
 
-Grades 9–12, initially a few Korean international-school communities reachable through actual student/club contacts. IB, AP and other curricula are not interchangeable. CAS is only relevant to some students and recognition remains their school's decision.
+Next: [outcome links, contribution notes, reflection, and peer feedback](features/sprint-outcomes.md).
 
-## What exists already
+After a pilot: decide whether project coordination belongs in Crosscampus, or whether discovery and a lightweight result record are enough. Add features based on observed friction.
 
-- KIS publicly describes extensive student-led clubs: https://www.kis.or.kr/student-life/activities-athletics
-- IB describes purposeful, student-initiated CAS experiences/projects: https://www.ibo.org/programmes/diploma-programme/curriculum/dp-core/creativity-activity-and-service/cas-projects/
-- TeamUp already markets high-school teammate discovery: https://www.jointeamup.net/
+## First pilot
 
-Sources reviewed 2026-11-05 Korea time. These establish activities and competition, not proof of demand for our product. Competitor adoption claims were not independently verified.
+1. Interview five students about the last project they tried to recruit for or join. Ask for specific attempts, existing tools, and where progress stalled.
+2. Invite three project leaders with a real, small outcome and clearly scoped roles.
+3. Ask ten students across two or three schools to try discovery and a proposal.
+4. Observe response time, role-relevant proposals, accepted members, and first meetings.
+5. Follow up after seven days: did the team create a draft/result, and which tool did it use to coordinate?
 
-## Concrete validation plan
+These numbers define a planned experiment, not usage to date. The decision criteria are evidence of completed first steps, recurring coordination problems, and whether participants choose to continue.
 
-1. Interview 5 students: ask about the last time they tried to recruit/join a project, how they found people, where it stalled and what they actually did. Avoid leading 'Would you use this?' questions.
-2. Obtain permission to post 3 real, well-scoped project opportunities. No fake listings presented as real.
-3. Ask 10 students from 2–3 schools to try discovery → proposal.
-4. Observe whether a cross-school team accepts a member and holds its first meeting.
-5. Seven days later, ask whether there is a real draft/result and whether coordination still happens here or entirely elsewhere.
+## Operating constraints
 
-Decision metrics: role-relevant proposals, time to first response, accepted teams, first meeting held, first outcome produced. Targets are experimental goals, not current results.
+Live projects are invite-only. A Google account verifies identity ownership, not school enrollment. School affiliation is self-reported. Before broader access, the product needs student feedback, a moderation process, pagination, and abuse controls.
 
-## Boundaries of v0
-
-No AI-generated assignments or CAS reflections. No scraped student data, unverified school badges, admissions guarantees, tutoring marketplace, open direct messaging, paid plans or automatic external notifications. Current invite/access control comes from private Sites hosting. Broader student rollout needs its own verification, moderation and access work.
-
-## Roadmap
-
-- Shipped v0: discovery, proposals, decisions, first-week board.
-- T01 (teammate): outcome links, contribution/reflection, peer feedback.
-- After validation: student invitation/verification, moderation queue, deadline reminders, project-specific task ownership.
-- Evaluate optional AI only after a repeated need is demonstrated; describe the existing rule-based matching honestly.
+The prototype does not offer admissions guarantees, school-approved credit, public direct messaging, file uploads, or automated reflections.

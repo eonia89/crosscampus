@@ -1,20 +1,18 @@
-## Problem and resulting behavior
+## Change
 
-## Task
+What problem does this solve, and what can a user do after the change?
 
-Reference the assigned task in `docs/tasks/`.
+Closes #
 
 ## Verification
 
-- [ ] `npm test`
-- [ ] `npm run typecheck`
-- [ ] `npm run build`
-- [ ] User flow and authorization checked; describe evidence/limits below
+- [ ] Domain and Firestore Rules tests
+- [ ] TypeScript and formatting checks
+- [ ] Production build
+- [ ] Changed flow checked at desktop and narrow widths
 
-## Screenshots or demonstration
+Include test results and a screenshot or short reproduction path where useful.
 
-## Remaining limitations
+## Notes
 
-## Contribution
-
-Describe the actual implementation and testing performed, including AI assistance where relevant.
+Mention remaining limits, deployment considerations, and material tooling assistance.

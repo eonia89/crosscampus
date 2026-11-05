@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function allowed() { return signedIn() && get(/databases/$(database)/documents/access/$(request.auth.token.email)).data.enabled == true; }
+    function own(uid) { return allowed() && request.auth.uid == uid; }
+    function str(v, lo, hi) { return v is string && v.size() >= lo && v.size() <= hi; }
+    function roles(v) { return v is list && v.size() >= 1 && v.size() <= 4 && v.toSet().size() == v.size() && v.hasOnly(['기획','디자인','개발','영상','리서치','글쓰기','운영']); }
+    function language(v) { return v in ['한국어','English','한국어·English']; }
+    function project(pid) { return get(/databases/$(database)/documents/projects/$(pid)).data; }
+    function team(pid) { return allowed() && request.auth.uid in project(pid).memberIds; }
+    function profileValid(d, uid) {
+      return d.keys().hasOnly(['id','name','school','grade','skills','hours','language','bio'])
+        && d.id == uid && str(d.name,1,30) && str(d.school,1,80)
+        && d.grade in ['G9','G10','G11','G12'] && roles(d.skills)
+        && d.hours is int && d.hours >= 1 && d.hours <= 10
+        && language(d.language) && str(d.bio,0,250);
+    }
+    function projectValid(d, pid) {
+      return d.keys().hasOnly(['id','ownerId','title','subtitle','description','outcome','category','roles','hours','weeks','mode','language','deadlineAt','color','status','createdAt','sample','memberIds','filledRoles','lastAcceptedUid'])
+        && d.id == pid && d.ownerId == request.auth.uid
+        && str(d.title,3,70) && str(d.subtitle,5,110) && str(d.description,20,1500) && str(d.outcome,5,250)
+        && d.category in ['환경·사회','미디어·창작','테크·메이킹','리서치','커뮤니티'] && roles(d.roles)
+        && d.hours is int && d.hours >= 1 && d.hours <= 10 && d.weeks is int && d.weeks >= 1 && d.weeks <= 12
+        && d.mode in ['온라인','서울·경기','제주'] && language(d.language)
+        && d.deadlineAt is int && d.deadlineAt >= request.time.toMillis()
+        && d.color in ['coral','lime','lavender','sky','peach'] && d.status == 'open'
+        && d.createdAt == request.time && d.sample == false
+        && d.memberIds == [request.auth.uid] && d.filledRoles == {} && d.lastAcceptedUid == '';
+    }
+    function acceptance(pid) {
+      let old = resource.data;
+      let next = request.resource.data;
+      let uid = next.lastAcceptedUid;
+      let appId = pid + '__' + uid;
+      let before = get(/databases/$(database)/documents/applications/$(appId)).data;
+      let after = getAfter(/databases/$(database)/documents/applications/$(appId)).data;
+      return next.diff(old).affectedKeys().hasOnly(['memberIds','filledRoles','lastAcceptedUid'])
+        && before.projectId == pid && before.userId == uid && before.status == 'pending'
+        && after.status == 'accepted' && after.role == before.role
+        && !(before.role in old.filledRoles)
+        && next.filledRoles.diff(old.filledRoles).affectedKeys().hasOnly([before.role])
+        && next.filledRoles[before.role] == uid
+        && !(uid in old.memberIds) && uid in next.memberIds
+        && next.memberIds.size() == old.memberIds.size() + 1
+        && next.memberIds.hasAll(old.memberIds)
+        && next.memberIds.toSet().size() == next.memberIds.size();
+    }
+    function applicationValid(d, aid) {
+      let p = project(d.projectId);
+      return d.keys().hasOnly(['id','projectId','userId','ownerId','role','note','status','createdAt'])
+        && aid == d.projectId + '__' + request.auth.uid && d.id == aid
+        && d.userId == request.auth.uid && d.ownerId == p.ownerId && d.userId != p.ownerId
+        && d.role in p.roles && !(d.role in p.filledRoles)
+        && p.status == 'open' && p.deadlineAt >= request.time.toMillis()
+        && exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && str(d.note,10,600) && d.status == 'pending' && d.createdAt == request.time;
+    }
+    match /access/{email} {
+      allow get: if signedIn() && request.auth.token.email == email;
+      allow list, write: if false;
+    }
+    match /profiles/{uid} {
+      allow read: if allowed();
+      allow create, update: if own(uid) && profileValid(request.resource.data, uid);
+    }
+    match /counters/{uid} {
+      allow get: if own(uid);
+      allow create, update: if own(uid)
+        && request.resource.data.keys().hasOnly(['count','lastProjectId'])
+        && request.resource.data.count is int && request.resource.data.count <= 20
+        && request.resource.data.count == (resource == null ? 1 : resource.data.count + 1)
+        && !exists(/databases/$(database)/documents/projects/$(request.resource.data.lastProjectId))
+        && getAfter(/databases/$(database)/documents/projects/$(request.resource.data.lastProjectId)).data.ownerId == uid;
+    }
+    match /projects/{pid} {
+      allow read: if allowed();
+      allow create: if allowed() && projectValid(request.resource.data,pid)
+        && exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/counters/$(request.auth.uid)).data.lastProjectId == pid
+        && getAfter(/databases/$(database)/documents/counters/$(request.auth.uid)).data.count <= 20;
+      allow update: if allowed() && resource.data.ownerId == request.auth.uid && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status in ['open','closed'])
+        || acceptance(pid));
+    }
+    match /applications/{aid} {
+      allow read: if allowed() && (resource.data.userId == request.auth.uid || resource.data.ownerId == request.auth.uid);
+      allow create: if allowed() && applicationValid(request.resource.data,aid);
+      allow update: if allowed() && (
+        (resource.data.userId == request.auth.uid && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'withdrawn')
+        || (resource.data.userId == request.auth.uid && resource.data.status in ['withdrawn','rejected'] && applicationValid(request.resource.data,aid)
+          && request.resource.data.projectId == resource.data.projectId)
+        || (resource.data.ownerId == request.auth.uid && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && (request.resource.data.status == 'rejected' || (
+            request.resource.data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.filledRoles[resource.data.role] == resource.data.userId
+            && resource.data.userId in getAfter(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.memberIds
+            && existsAfter(/databases/$(database)/documents/sprints/$(resource.data.projectId))
+          )))
+      );
+    }
+    match /sprints/{pid} {
+      function valid(d) { return d.keys().hasOnly(['projectId','meeting','goal']) && d.projectId == pid && str(d.meeting,0,150) && str(d.goal,5,250); }
+      allow read: if team(pid);
+      allow create: if allowed() && project(pid).ownerId == request.auth.uid && valid(request.resource.data)
+        && getAfter(/databases/$(database)/documents/projects/$(pid)).data.memberIds.size() > 1;
+      allow update: if team(pid) && valid(request.resource.data);
+      match /tasks/{tid} {
+        function validTask(d) {
+          return d.keys().hasOnly(['id','projectId','title','done','kind','role','assigneeId'])
+            && d.id == tid && d.projectId == pid && str(d.title,5,180) && d.done == false
+            && ((tid in ['welcome','scope'] && d.kind == tid && d.role == '' && d.assigneeId == request.auth.uid
+              && !exists(/databases/$(database)/documents/sprints/$(pid)))
+            || (d.kind == 'role' && tid == 'role-' + d.role
+              && getAfter(/databases/$(database)/documents/projects/$(pid)).data.filledRoles[d.role] == d.assigneeId));
+        }
+        allow read: if team(pid);
+        allow create: if allowed() && project(pid).ownerId == request.auth.uid
+          && existsAfter(/databases/$(database)/documents/sprints/$(pid)) && validTask(request.resource.data);
+        allow update: if team(pid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done']) && request.resource.data.done is bool;
+      }
+    }
+    match /users/{uid}/bookmarks/{pid} {
+      allow read, delete: if own(uid);
+      allow create, update: if own(uid) && request.resource.data.keys().hasOnly(['projectId'])
+        && request.resource.data.projectId == pid && exists(/databases/$(database)/documents/projects/$(pid));
+    }
+    match /reports/{rid} {
+      allow create: if allowed() && request.resource.data.keys().hasOnly(['id','projectId','userId','reason','createdAt'])
+        && rid == request.resource.data.projectId + '__' + request.auth.uid
+        && request.resource.data.id == rid && request.resource.data.userId == request.auth.uid
+        && str(request.resource.data.reason,5,500) && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId));
+    }
+  }
+}

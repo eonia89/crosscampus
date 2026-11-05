@@ -1,10 +1,11 @@
 ---
 name: Product feature
 about: A bounded, testable Crosscampus product improvement
-title: '[Feature] '
-labels: ''
-assignees: ''
+title: "[Feature] "
+labels: ""
+assignees: ""
 ---
+
 ## Student problem
 
 ## Scope

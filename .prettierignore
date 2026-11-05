@@ -1,0 +1,16 @@
+node_modules/
+dist-firebase/
+package-lock.json
+firestore.rules
+.firebase/
+*-debug.log
+firebase-config.local.json
+# Historical local tooling, not part of the repository
+.wrangler/
+.sites-runtime/
+.vinext/
+.next/
+dist/
+work/
+outputs/
+next-env.d.ts
