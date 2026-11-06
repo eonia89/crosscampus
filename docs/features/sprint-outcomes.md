@@ -1,6 +1,6 @@
 # Sprint outcomes and peer feedback
 
-Status: **Proposed** · [Issue #1](https://github.com/eonia89/crosscampus/issues/1)
+Status: **Implemented on `feat/sprint-outcomes`, in review** · [Issue #1](https://github.com/eonia89/crosscampus/issues/1)
 Suggested branch: `feat/sprint-outcomes`
 Use the base branch named in the issue.
 
@@ -19,9 +19,21 @@ A team can currently accept members, agree a kickoff goal, and check first-week 
 
 No global showcase, auto-generated recommendation, file upload, external notifications, endorsement score or public profile expansion in this task.
 
+## Implemented storage decision
+
+The proposed `outcomes/{outcomeId}/feedback/{feedbackId}` subcollection cannot enforce bounded atomic deletion within Firestore's Rules limits (10 document-access calls per operation, 20 per batch or transaction). Proving that a deleted outcome left no feedback would need an `existsAfter` check for every possible comment ID in one rule, and a 21-write delete batch already exceeds the per-request budget once each write checks membership. The implementation therefore uses:
+
+- `sprints/{projectId}/outcomes/{oid}` where `oid` is one of the fixed slots `o01`…`o20`. Rules only allow those IDs, so a team can never hold more than 20 outcomes, including under concurrent creates (two clients claiming the same slot conflict, and the loser moves to the next free slot). Deleting an outcome frees its slot. This replaces the separate counter document.
+- Feedback embedded in the outcome as a map `feedback: {feedbackId: {id, userId, body, createdAt}}` (at most 20 entries) plus `lastFeedbackId`. A teammate's append must add exactly the entry named by `lastFeedbackId`, authored by `request.auth.uid` with `createdAt == request.time`. Existing entries cannot change or disappear. Deleting the outcome document removes its feedback in the same single-document write, so orphaned comments are impossible.
+- The adapter flattens each document into the `outcomes` / `feedback` view-model arrays below, so the UI and the demo share one shape.
+
+Every rule uses at most three document-access calls (invite, project membership, sprint existence). Slot IDs are reused after deletion, so the adapter checks that a new comment still targets the outcome version the teammate was viewing. That check is a client-side usability guard, not a security boundary.
+
+Rules URL constraints are deliberately stricter than generic URL syntax and match `SAFE_URL_PATTERN` in `src/lib/domain.mjs`: `https://` only, a DNS host whose last label is alphabetic or punycode (no IP literals, so no loopback or private addresses), no `@` userinfo, no whitespace or backslash, no `*.localhost`, and at most 2048 characters. The reducer validates with `new URL` first and stores the normalized `href`.
+
 ## Suggested data contract
 
-Live records must use `sprints/{projectId}/outcomes/{outcomeId}` and nested `feedback/{feedbackId}` collections, with explicit Firestore Rules. Reconstruct optional arrays in the UI world for compatibility; the arrays below are view-model contracts, not a single live JSON blob. No SQL migration is needed.
+Live records use `sprints/{projectId}/outcomes/{oid}` with embedded feedback (see the storage decision above) and explicit Firestore Rules. Reconstruct optional arrays in the UI world for compatibility; the arrays below are view-model contracts, not a single live JSON blob. No SQL migration is needed.
 
 ```ts
 outcomes?: Array<{

@@ -2,13 +2,13 @@
 
 ## Automated checks
 
-| Check                  | Coverage                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm test`             | 17 domain tests: validation, proposals, role capacity, withdrawal, team membership, private projections, and first tasks.                                                     |
-| `npm run test:rules`   | 14 Firestore integration tests: invitation/identity checks, schema/ownership enforcement, private reads, atomic acceptance, concurrency, revocation, and sprint preservation. |
-| `npm run typecheck`    | TypeScript application and build configuration.                                                                                                                               |
-| `npm run format:check` | Consistent source and documentation formatting.                                                                                                                               |
-| `npm run build`        | Production Vite build.                                                                                                                                                        |
+| Check                  | Coverage                                                                                                                                                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`             | 24 domain tests: validation, proposals, role capacity, withdrawal, team membership, private projections, first tasks, and sprint outcomes/feedback (author rights, URL safety, limits, old payloads).                                     |
+| `npm run test:rules`   | 22 Firestore integration tests: invitation/identity checks, schema/ownership enforcement, private reads, atomic acceptance, concurrency, revocation, sprint preservation, and outcome/feedback access, forgery, deletion and limit races. |
+| `npm run typecheck`    | TypeScript application and build configuration.                                                                                                                                                                                           |
+| `npm run format:check` | Consistent source and documentation formatting.                                                                                                                                                                                           |
+| `npm run build`        | Production Vite build.                                                                                                                                                                                                                    |
 
 [GitHub Actions](https://github.com/eonia89/crosscampus/actions/workflows/ci.yml) runs these checks for pull requests and pushes to main. Test counts describe the current suite, not a coverage percentage.
 
@@ -22,6 +22,8 @@ Verified on 2026-11-05:
 - Production HTTPS and Firebase runtime configuration load successfully.
 - Google sign-in and the invited owner's empty live workspace load successfully.
 - An unauthenticated production Firestore list request is denied (403).
+
+Sprint outcomes (2026-11-06, local dev server, fictional demo data, desktop 1360px and 390px mobile): Mina (leader) recorded an outcome after an unsafe `https://localhost` link was rejected with the typed text kept. Jin (accepted) saw it after reload, commented, posted, edited and deleted his own outcome through the confirmation step, and his feedback was removed along with it. Jin and Mina saw no edit/delete controls on each other's outcomes. Yuri (pending applicant) saw no board or outcomes. A saved demo world without the new arrays loaded with its tasks intact. The 390px layout had no horizontal overflow.
 
 Multi-user live write and access scenarios are exercised in the local Firestore emulator. No fictional student profile or project was inserted into the production workspace to demonstrate usage.
 
