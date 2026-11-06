@@ -20,6 +20,8 @@ import {
   outcomeSlots,
   FEEDBACK_LIMIT,
   OUTCOME_LIMIT,
+  isExpectedOutcome,
+  STALE_OUTCOME_MESSAGE,
 } from "./domain.mjs";
 const fail = (message) => {
   throw new Error(message);
@@ -330,11 +332,7 @@ export function createStore(db, uid) {
       const fields =
         c.type === "outcome.update" ? outcomeFields(c.outcome) : null;
       await runTransaction(db, async (tx) => {
-        const o = await tx.get(
-          ref("sprints", c.projectId, "outcomes", c.outcomeId),
-        );
-        if (!o.exists())
-          fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.");
+        const o = await expectedOutcome(tx, c);
         if (o.data().userId !== uid)
           fail("내가 남긴 결과물만 수정하거나 삭제할 수 있어요.");
         if (fields)
@@ -345,17 +343,7 @@ export function createStore(db, uid) {
       const body = feedbackBody(c.body);
       const id = crypto.randomUUID().replaceAll("-", "");
       await runTransaction(db, async (tx) => {
-        const o = await tx.get(
-          ref("sprints", c.projectId, "outcomes", c.outcomeId),
-        );
-        // Slot IDs are reused after deletion; make sure the note still lands
-        // on the outcome the teammate was looking at.
-        if (
-          !o.exists() ||
-          (c.outcomeCreatedAt !== undefined &&
-            millis(o.data().createdAt) !== c.outcomeCreatedAt)
-        )
-          fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.");
+        const o = await expectedOutcome(tx, c);
         if (Object.keys(o.data().feedback ?? {}).length >= FEEDBACK_LIMIT)
           fail(`피드백은 결과물마다 ${FEEDBACK_LIMIT}개까지 남길 수 있어요.`);
         tx.update(o.ref, {
@@ -370,6 +358,18 @@ export function createStore(db, uid) {
       });
     } else fail("지원하지 않는 요청이에요.");
     return load();
+  }
+  // Reads the targeted outcome inside the transaction (so retries re-check it)
+  // and rejects the command if the slot is empty or now holds a different
+  // outcome instance than the one the caller was viewing.
+  async function expectedOutcome(tx, c) {
+    const o = await tx.get(
+      ref("sprints", c.projectId, "outcomes", c.outcomeId),
+    );
+    if (!o.exists()) fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.");
+    if (!isExpectedOutcome(millis(o.data().createdAt), c.outcomeCreatedAt))
+      fail(STALE_OUTCOME_MESSAGE);
+    return o;
   }
   return { load, execute };
 }

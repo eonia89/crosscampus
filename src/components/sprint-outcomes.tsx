@@ -10,6 +10,7 @@ import {
   FEEDBACK_LIMIT,
   OUTCOME_LIMIT,
   SAFE_URL_PATTERN,
+  outcomeTarget,
 } from "../lib/domain.mjs";
 
 type Item = Record<string, any>;
@@ -214,9 +215,7 @@ function FeedbackForm({
     const failure = await run(
       {
         type: "feedback.create",
-        projectId: outcome.projectId,
-        outcomeId: outcome.id,
-        outcomeCreatedAt: outcome.createdAt,
+        ...outcomeTarget(outcome),
         body,
       },
       "피드백을 남겼어요.",
@@ -287,7 +286,7 @@ function OutcomeCard({
     setDeleting(true);
     setError("");
     const failure = await run(
-      { type: "outcome.delete", projectId: o.projectId, outcomeId: o.id },
+      { type: "outcome.delete", ...outcomeTarget(o) },
       "결과물을 삭제했어요.",
     );
     if (failure) {
@@ -313,8 +312,7 @@ function OutcomeCard({
             const failure = await run(
               {
                 type: "outcome.update",
-                projectId: o.projectId,
-                outcomeId: o.id,
+                ...outcomeTarget(o),
                 outcome: d,
               },
               "결과물을 수정했어요.",

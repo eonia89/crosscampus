@@ -19,7 +19,10 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { createStore, applicationId } from "../../src/lib/firebase-store.mjs";
-import { outcomeSlots as outcomeSlotsForTest } from "../../src/lib/domain.mjs";
+import {
+  outcomeSlots as outcomeSlotsForTest,
+  outcomeTarget,
+} from "../../src/lib/domain.mjs";
 let env;
 const profile = (uid) => ({
   id: uid,
@@ -666,7 +669,7 @@ test("deleting an outcome removes its feedback with it, leaving nothing readable
       outcomeCreatedAt: o.createdAt,
       body: "삭제된 결과물에 남기려던 피드백",
     }),
-    /찾을 수 없어요/,
+    /새로고침/,
   );
   assert.equal((await store("owner").load()).feedback.length, 0);
 });
@@ -750,4 +753,70 @@ test("deletion racing with new feedback never leaves orphaned notes", async () =
   assert.equal(snap.exists(), false);
   const w = await store("bob").load();
   assert.equal(w.feedback.length, 0);
+});
+
+// Regression cases from the maintainer review (2026-11-06): slot IDs are
+// reused, so a stale edit/delete for a deleted outcome must not touch the
+// replacement that now occupies the same slot.
+async function replaceInSameSlot(pid) {
+  const old = await postOutcome("alice", pid);
+  await store("alice").execute({
+    type: "outcome.delete",
+    ...outcomeTarget(old),
+  });
+  const replacement = await postOutcome("alice", pid, {
+    title: "Replacement result",
+  });
+  assert.equal(replacement.id, old.id);
+  assert.notEqual(replacement.createdAt, old.createdAt);
+  await comment("bob", pid, replacement.id);
+  return { old, replacement };
+}
+for (const operation of ["update", "delete"]) {
+  test(`review: stale ${operation} must not affect a replacement in a reused slot`, async () => {
+    const pid = await teamWithMembers();
+    const { old, replacement } = await replaceInSameSlot(pid);
+    await assert.rejects(
+      store("alice").execute({
+        type: `outcome.${operation}`,
+        projectId: pid,
+        outcomeId: old.id,
+        outcomeCreatedAt: old.createdAt,
+        ...(operation === "update"
+          ? { outcome: { ...outcomeInput, title: "Stale edit from old tab" } }
+          : {}),
+      }),
+      /새로고침/,
+    );
+    const actual = await getDoc(outcomeRef("alice", pid, replacement.id));
+    assert.equal(actual.exists(), true);
+    assert.equal(actual.data().title, "Replacement result");
+    assert.equal(actual.data().contribution, outcomeInput.contribution);
+    assert.equal(Object.keys(actual.data().feedback).length, 1);
+  });
+}
+test("review: a refreshed view can still edit and delete the replacement", async () => {
+  const pid = await teamWithMembers();
+  const { replacement } = await replaceInSameSlot(pid);
+  const fresh = (await store("alice").load()).outcomes.find(
+    (o) => o.id === replacement.id,
+  );
+  assert.equal(fresh.createdAt, replacement.createdAt);
+  await store("alice").execute({
+    type: "outcome.update",
+    ...outcomeTarget(fresh),
+    outcome: { ...outcomeInput, title: "Edited after refresh" },
+  });
+  assert.equal(
+    (await getDoc(outcomeRef("alice", pid, fresh.id))).data().title,
+    "Edited after refresh",
+  );
+  await store("alice").execute({
+    type: "outcome.delete",
+    ...outcomeTarget(fresh),
+  });
+  assert.equal(
+    (await getDoc(outcomeRef("alice", pid, fresh.id))).exists(),
+    false,
+  );
 });

@@ -116,6 +116,21 @@ export function outcomeFields(v = {}) {
   };
 }
 export const feedbackBody = (v) => text(v, "피드백", 5, 500);
+
+// Live slot IDs (o01…o20) are reused after a deletion, so an outcome
+// instance is identified by its ID *and* its createdAt. Every command that
+// targets an existing outcome carries both, built by outcomeTarget(), and every
+// executor checks them with isExpectedOutcome() before writing. This guards
+// against stale views; Firestore Rules remain the security boundary.
+export const STALE_OUTCOME_MESSAGE =
+  "이 결과물은 그사이 삭제되거나 새 결과물로 바뀌었어요. 새로고침한 뒤 다시 시도해 주세요.";
+export const outcomeTarget = (o) => ({
+  projectId: o.projectId,
+  outcomeId: o.id,
+  outcomeCreatedAt: o.createdAt,
+});
+export const isExpectedOutcome = (createdAt, expected) =>
+  expected === undefined || createdAt === expected;
 export function makeDemoWorld(now = Date.now()) {
   const w = emptyWorld();
   w.profiles = {
@@ -565,6 +580,8 @@ export function reduceWorld(
         (o) => o.id === c.outcomeId && o.projectId === c.projectId,
       );
       if (!o) fail("결과물을 찾을 수 없어요.", 404);
+      if (!isExpectedOutcome(o.createdAt, c.outcomeCreatedAt))
+        fail(STALE_OUTCOME_MESSAGE, 409);
       if (o.userId !== actor)
         fail("내가 남긴 결과물만 수정하거나 삭제할 수 있어요.", 403);
       if (c.type === "outcome.update") {
@@ -582,6 +599,8 @@ export function reduceWorld(
         (o) => o.id === c.outcomeId && o.projectId === c.projectId,
       );
       if (!o) fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.", 404);
+      if (!isExpectedOutcome(o.createdAt, c.outcomeCreatedAt))
+        fail(STALE_OUTCOME_MESSAGE, 409);
       if (
         w.feedback.filter((f) => f.outcomeId === o.id).length >= FEEDBACK_LIMIT
       )

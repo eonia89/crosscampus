@@ -8,6 +8,7 @@ import {
   getMatch,
   DomainError,
   safeResultUrl,
+  outcomeTarget,
 } from "../src/lib/domain.mjs";
 const now = Date.parse("2026-11-05T02:00:00+09:00");
 const world = () => makeDemoWorld(now);
@@ -455,4 +456,53 @@ test("older demo payloads without outcome arrays still load and accept outcomes"
   assert.equal(w.outcomes.length, 1);
   assert.equal(w.sprints.length, old.sprints.length);
   assert.equal(w.applications.length, old.applications.length);
+});
+
+test("edit, delete and feedback carry the displayed outcome instance and reject stale ones", () => {
+  let w = createOutcome(accepted(), "demo-jin");
+  const shown = w.outcomes[0];
+  assert.deepEqual(outcomeTarget(shown), {
+    projectId: "ocean",
+    outcomeId: shown.id,
+    outcomeCreatedAt: now,
+  });
+  w = act(w, "demo-mina", {
+    type: "feedback.create",
+    ...outcomeTarget(shown),
+    body: "소리 보완하면 더 좋아질 것 같아요.",
+  });
+  // Simulate the slot now holding a different instance than the stale view.
+  const replaced = structuredClone(w);
+  replaced.outcomes[0].createdAt = now + 5000;
+  const stale = [
+    {
+      type: "outcome.update",
+      outcome: { ...outcome, title: "오래된 탭의 수정" },
+    },
+    { type: "outcome.delete" },
+    { type: "feedback.create", body: "오래된 탭의 피드백이에요." },
+  ];
+  for (const extra of stale) {
+    const actor = extra.type === "feedback.create" ? "demo-mina" : "demo-jin";
+    assert.throws(
+      () => act(replaced, actor, { ...outcomeTarget(shown), ...extra }),
+      (e) => e.status === 409 && /새로고침/.test(e.message),
+    );
+  }
+  assert.equal(replaced.outcomes[0].title, outcome.title);
+  assert.equal(replaced.feedback.length, 1);
+  // A refreshed view targets the current instance and works normally.
+  const current = replaced.outcomes[0];
+  const edited = act(replaced, "demo-jin", {
+    type: "outcome.update",
+    ...outcomeTarget(current),
+    outcome: { ...outcome, title: "새로고침 후 수정" },
+  });
+  assert.equal(edited.outcomes[0].title, "새로고침 후 수정");
+  const removed = act(edited, "demo-jin", {
+    type: "outcome.delete",
+    ...outcomeTarget(edited.outcomes[0]),
+  });
+  assert.equal(removed.outcomes.length, 0);
+  assert.equal(removed.feedback.length, 0);
 });
