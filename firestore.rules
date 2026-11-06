@@ -121,6 +121,59 @@ service cloud.firestore {
           && existsAfter(/databases/$(database)/documents/sprints/$(pid)) && validTask(request.resource.data);
         allow update: if team(pid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done']) && request.resource.data.done is bool;
       }
+      // Outcome IDs are fixed slots o01..o20, so a team can never hold more than
+      // 20 outcomes, even under concurrent creates. Feedback lives inside its
+      // outcome as a map (max 20 entries); deleting the outcome document deletes
+      // its feedback in the same single-document write, leaving no orphans.
+      match /outcomes/{oid} {
+        function slot() {
+          return oid in ['o01','o02','o03','o04','o05','o06','o07','o08','o09','o10',
+            'o11','o12','o13','o14','o15','o16','o17','o18','o19','o20'];
+        }
+        // Mirrors SAFE_URL_PATTERN in src/lib/domain.mjs. Deliberately stricter
+        // than generic URL syntax: HTTPS only, no userinfo ('@' is not allowed in
+        // the host part), DNS names with an alphabetic TLD only (no IP literals),
+        // no whitespace or backslashes, and no *.localhost hosts.
+        function safeUrl(u) {
+          return u is string && u.size() >= 12 && u.size() <= 2048
+            && u.matches('^https://([A-Za-z0-9-]+[.])+([A-Za-z]{2,63}|xn--[A-Za-z0-9-]{1,59})(:[0-9]{1,5})?([/?#][^\\s\\\\]*)?$')
+            && !u.lower().matches('^https://([^/?#:]*[.])?localhost([:/?#].*)?$');
+        }
+        function fields(d) {
+          return str(d.title,3,80) && safeUrl(d.url)
+            && str(d.contribution,10,500) && str(d.reflection,10,1000);
+        }
+        function newFeedback(old, next) {
+          let fid = next.lastFeedbackId;
+          let f = next.feedback[fid];
+          return fid is string && fid.matches('^[A-Za-z0-9]{8,40}$')
+            && next.feedback is map && !(fid in old.feedback)
+            && next.feedback.diff(old.feedback).affectedKeys().hasOnly([fid])
+            && next.feedback.size() == old.feedback.size() + 1
+            && next.feedback.size() <= 20
+            && f.keys().hasOnly(['id','userId','body','createdAt'])
+            && f.id == fid && f.userId == request.auth.uid
+            && f.createdAt == request.time && str(f.body,5,500);
+        }
+        allow read: if team(pid);
+        allow create: if team(pid) && slot()
+          && exists(/databases/$(database)/documents/sprints/$(pid))
+          && request.resource.data.keys().hasOnly(['id','projectId','userId','title','url','contribution','reflection','createdAt','updatedAt','feedback','lastFeedbackId'])
+          && request.resource.data.id == oid && request.resource.data.projectId == pid
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.feedback == {} && request.resource.data.lastFeedbackId == ''
+          && fields(request.resource.data);
+        allow update: if team(pid) && (
+          (resource.data.userId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','url','contribution','reflection','updatedAt'])
+            && request.resource.data.updatedAt == request.time
+            && fields(request.resource.data))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback','lastFeedbackId'])
+            && newFeedback(resource.data, request.resource.data)));
+        allow delete: if team(pid) && resource.data.userId == request.auth.uid;
+      }
     }
     match /users/{uid}/bookmarks/{pid} {
       allow read, delete: if own(uid);
