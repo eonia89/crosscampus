@@ -13,7 +13,12 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
-import { makeDemoWorld, reduceWorld, visibleWorld } from "../lib/domain.mjs";
+import {
+  makeDemoWorld,
+  reduceWorld,
+  visibleWorld,
+  withOutcomeDefaults,
+} from "../lib/domain.mjs";
 import { createStore } from "../lib/firebase-store.mjs";
 let pending: Promise<any> | undefined;
 async function services() {
@@ -95,7 +100,8 @@ function demoWorld(uid?: string) {
         w.bookmarks &&
         Array.isArray(w.reports)
       )
-        return w;
+        // Saved worlds from before outcomes/feedback get empty arrays.
+        return withOutcomeDefaults(w);
     }
   } catch {}
   return makeDemoWorld();

@@ -53,7 +53,69 @@ export const emptyWorld = () => ({
   bookmarks: {},
   sprints: [],
   reports: [],
+  outcomes: [],
+  feedback: [],
 });
+// Older saved demo worlds predate outcomes/feedback. Add empty arrays without
+// touching any existing data; the result is only persisted on the next change.
+export function withOutcomeDefaults(w) {
+  return {
+    ...w,
+    outcomes: Array.isArray(w.outcomes) ? w.outcomes : [],
+    feedback: Array.isArray(w.feedback) ? w.feedback : [],
+  };
+}
+
+export const OUTCOME_LIMIT = 20;
+export const FEEDBACK_LIMIT = 20;
+// Live outcome IDs are fixed slots; 20 slots bound a team to 20 outcomes.
+export const outcomeSlots = Array.from(
+  { length: OUTCOME_LIMIT },
+  (_, i) => `o${String(i + 1).padStart(2, "0")}`,
+);
+// Mirrors firestore.rules exactly. The host must be a DNS name whose last
+// label is alphabetic (or punycode), so IP literals are never accepted.
+export const SAFE_URL_PATTERN =
+  /^https:\/\/([A-Za-z0-9-]+\.)+([A-Za-z]{2,63}|xn--[A-Za-z0-9-]{1,59})(:[0-9]{1,5})?([/?#][^\s\\]*)?$/;
+const LOOPBACK_HOST_PATTERN = /^https:\/\/([^/?#:]*\.)?localhost(:|\/|\?|#|$)/i;
+
+export function safeResultUrl(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  const message =
+    "결과물 링크: https://로 시작하는 공개 주소를 입력해 주세요. 로그인 정보나 내부 주소(localhost 등)는 사용할 수 없어요.";
+  if (!raw || raw.length > 2048) fail(message);
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    fail(message);
+  }
+  if (
+    u.protocol !== "https:" ||
+    u.username ||
+    u.password ||
+    !u.hostname ||
+    /^\[|^[0-9.]+$|^0x/i.test(u.hostname)
+  )
+    fail(message);
+  const href = u.href;
+  if (
+    href.length > 2048 ||
+    !SAFE_URL_PATTERN.test(href) ||
+    LOOPBACK_HOST_PATTERN.test(href)
+  )
+    fail(message);
+  return href;
+}
+export function outcomeFields(v = {}) {
+  return {
+    title: text(v.title, "결과물 이름", 3, 80),
+    url: safeResultUrl(v.url),
+    contribution: text(v.contribution, "나의 기여", 10, 500),
+    reflection: text(v.reflection, "돌아보기", 10, 1000),
+  };
+}
+export const feedbackBody = (v) => text(v, "피드백", 5, 500);
 export function makeDemoWorld(now = Date.now()) {
   const w = emptyWorld();
   w.profiles = {
@@ -262,7 +324,7 @@ export function reduceWorld(
   uid = () => crypto.randomUUID(),
 ) {
   if (!actor || typeof c !== "object" || !c) fail("로그인이 필요해요.", 401);
-  const w = structuredClone(original),
+  const w = withOutcomeDefaults(structuredClone(original)),
     p = w.projects.find((p) => p.id === c.projectId);
   const owned = () => {
     if (!p) fail("프로젝트를 찾을 수 없어요.", 404);
@@ -475,12 +537,72 @@ export function reduceWorld(
       });
       break;
     }
+    case "outcome.create": {
+      if (!canJoinSprint(w, c.projectId, actor))
+        fail("팀원만 결과물을 남길 수 있어요.", 403);
+      if (!w.sprints.some((s) => s.projectId === c.projectId))
+        fail("팀원을 수락하면 실행 보드가 열려요.");
+      if (
+        w.outcomes.filter((o) => o.projectId === c.projectId).length >=
+        OUTCOME_LIMIT
+      )
+        fail(`결과물은 팀마다 ${OUTCOME_LIMIT}개까지 남길 수 있어요.`);
+      w.outcomes.push({
+        id: uid(),
+        projectId: c.projectId,
+        userId: actor,
+        ...outcomeFields(c.outcome),
+        createdAt: now,
+        updatedAt: now,
+      });
+      break;
+    }
+    case "outcome.update":
+    case "outcome.delete": {
+      if (!canJoinSprint(w, c.projectId, actor))
+        fail("팀원만 결과물을 변경할 수 있어요.", 403);
+      const o = w.outcomes.find(
+        (o) => o.id === c.outcomeId && o.projectId === c.projectId,
+      );
+      if (!o) fail("결과물을 찾을 수 없어요.", 404);
+      if (o.userId !== actor)
+        fail("내가 남긴 결과물만 수정하거나 삭제할 수 있어요.", 403);
+      if (c.type === "outcome.update") {
+        Object.assign(o, outcomeFields(c.outcome), { updatedAt: now });
+      } else {
+        w.outcomes = w.outcomes.filter((x) => x !== o);
+        w.feedback = w.feedback.filter((f) => f.outcomeId !== o.id);
+      }
+      break;
+    }
+    case "feedback.create": {
+      if (!canJoinSprint(w, c.projectId, actor))
+        fail("팀원만 피드백을 남길 수 있어요.", 403);
+      const o = w.outcomes.find(
+        (o) => o.id === c.outcomeId && o.projectId === c.projectId,
+      );
+      if (!o) fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.", 404);
+      if (
+        w.feedback.filter((f) => f.outcomeId === o.id).length >= FEEDBACK_LIMIT
+      )
+        fail(`피드백은 결과물마다 ${FEEDBACK_LIMIT}개까지 남길 수 있어요.`);
+      w.feedback.push({
+        id: uid(),
+        outcomeId: o.id,
+        projectId: o.projectId,
+        userId: actor,
+        body: feedbackBody(c.body),
+        createdAt: now,
+      });
+      break;
+    }
     default:
       fail("지원하지 않는 요청이에요.");
   }
   return w;
 }
-export function visibleWorld(w, actor) {
+export function visibleWorld(original, actor) {
+  const w = withOutcomeDefaults(original);
   const v = structuredClone(w);
   v.applications = w.applications.filter(
     (a) =>
@@ -504,6 +626,8 @@ export function visibleWorld(w, actor) {
     ]),
   );
   v.sprints = w.sprints.filter((s) => canJoinSprint(w, s.projectId, actor));
+  v.outcomes = w.outcomes.filter((o) => canJoinSprint(w, o.projectId, actor));
+  v.feedback = w.feedback.filter((f) => canJoinSprint(w, f.projectId, actor));
   v.bookmarks = { [actor]: w.bookmarks[actor] ?? [] };
   v.reports = [];
   return v;
