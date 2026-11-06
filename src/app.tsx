@@ -46,6 +46,7 @@ import {
   logout,
   friendlyError,
 } from "./firebase/client";
+import { SprintOutcomes } from "./components/sprint-outcomes";
 type Item = Record<string, any>;
 const nav = [
   ["discover", "프로젝트 발견", Compass],
@@ -234,22 +235,39 @@ export default function Crosscampus() {
     const timer = setTimeout(() => setToast(""), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
-  async function action(command: Item, message = "저장했어요.") {
-    if (busy) return false;
+  async function action(
+    command: Item,
+    message = "저장했어요.",
+    onError?: (message: string) => void,
+  ) {
+    if (busy) {
+      onError?.("다른 요청을 처리하고 있어요. 잠시 후 다시 눌러 주세요.");
+      return false;
+    }
     setBusy(true);
     const epoch = authEpoch.current;
     try {
       const d = await sendCommand(mode, actor, command);
-      if (epoch !== authEpoch.current) return false;
+      if (epoch !== authEpoch.current) {
+        onError?.("계정이 바뀌어서 저장하지 않았어요.");
+        return false;
+      }
       setData(d);
       setToast(message);
       return true;
     } catch (e) {
-      setToast(friendlyError(e));
+      const failure = friendlyError(e);
+      setToast(failure);
+      onError?.(failure);
       return false;
     } finally {
       setBusy(false);
     }
+  }
+  async function runOutcome(command: Item, message: string) {
+    let failure: string | null = null;
+    const ok = await action(command, message, (m) => (failure = m));
+    return ok ? null : (failure ?? "저장하지 못했어요.");
   }
   const world = data?.world,
     me = world?.profiles[data?.actor],
@@ -1088,6 +1106,13 @@ export default function Crosscampus() {
                               </div>
                             </div>
                           )}
+                          <SprintOutcomes
+                            projectId={s.projectId}
+                            world={world}
+                            actor={activeActor}
+                            busy={busy}
+                            run={runOutcome}
+                          />
                         </section>
                       );
                     })

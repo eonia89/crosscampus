@@ -2453,3 +2453,285 @@ main {
   line-height: 1.7;
   border-bottom: 1px solid #dce3ff;
 }
+
+/* Sprint outcomes and peer feedback */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.outcomes {
+  margin-top: 30px;
+  padding-top: 26px;
+  border-top: 1px solid #e8eddf;
+}
+.outcomes-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.outcomes-head h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 12px 0 4px;
+}
+.outcomes-head p {
+  font-size: 11px;
+  color: #92a078;
+}
+.outcomes-count {
+  font-size: 11px;
+  color: #92a078;
+  white-space: nowrap;
+}
+.outcomes-empty {
+  padding: 22px;
+  border: 1px dashed #d8e0cc;
+  border-radius: 8px;
+  background: #fbfcf8;
+  font-size: 13px;
+  color: #6c7b59;
+  margin-bottom: 14px;
+}
+.add-outcome {
+  margin-bottom: 18px;
+}
+.outcome-card {
+  border: 1px solid #e5eadc;
+  border-radius: 9px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+.outcome-card.new,
+.outcome-card.editing {
+  background: #fbfcf8;
+}
+.outcome-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+.outcome-head h4 {
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.outcome-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #92a078;
+  margin-top: 6px;
+}
+.outcome-meta strong {
+  color: #4f584b;
+  font-weight: 600;
+}
+.mine-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eaf0ff;
+  color: #556fcb;
+}
+.outcome-tools {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.outcome-tools .btn {
+  gap: 6px;
+}
+.btn.danger {
+  color: #b4523e;
+}
+.btn.danger-solid {
+  background: #b4523e;
+  color: #fff;
+}
+.confirm-delete {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #fbf0ec;
+  font-size: 12px;
+  color: #8a4434;
+}
+.confirm-delete > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.outcome-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin: 14px 0 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+}
+.outcome-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outcome-link:hover {
+  text-decoration: underline;
+}
+.outcome-link.invalid {
+  background: #f4f4f1;
+  color: #8a8f86;
+  overflow-wrap: anywhere;
+}
+.outcome-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.outcome-body dt {
+  font-size: 10px;
+  font-weight: 600;
+  color: #92a078;
+  margin-bottom: 5px;
+}
+.outcome-body dd {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #3f463c;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.feedback {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1e5;
+}
+.feedback h5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c7b59;
+}
+.feedback ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+.feedback li {
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #f6f8f1;
+  margin-bottom: 8px;
+}
+.feedback li > p:last-child {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #3f463c;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.feedback li .outcome-meta {
+  margin-top: 0;
+}
+.sprint-card .outcomes form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.sprint-card .outcomes form button {
+  grid-column: auto;
+  justify-self: auto;
+}
+.sprint-card .outcomes .feedback-form {
+  grid-template-columns: 1fr;
+  margin-top: 12px;
+  gap: 10px;
+}
+.sprint-card .outcomes .feedback-form button {
+  justify-self: start;
+}
+.sprint-card .outcomes label > span:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sprint-card .outcomes .wide {
+  grid-column: 1 / -1;
+}
+.sprint-card .outcomes input,
+.sprint-card .outcomes textarea {
+  padding: 11px;
+  border: 1px solid #e0e8d5;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+  min-width: 0;
+}
+.sprint-card .outcomes textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+.char-count {
+  font-variant-numeric: tabular-nums;
+  color: #b3bca6;
+}
+.char-count.over {
+  color: #b4523e;
+}
+.form-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.form-error {
+  font-size: 12px;
+  color: #a2412d;
+  background: #fbf0ec;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+.feedback-full {
+  margin-top: 10px;
+}
+@media (max-width: 740px) {
+  .outcomes-head h3 {
+    font-size: 16px;
+  }
+  .outcome-card {
+    padding: 16px;
+  }
+  .outcome-head {
+    flex-direction: column;
+  }
+  .outcome-body,
+  .sprint-card .outcomes form {
+    grid-template-columns: 1fr;
+  }
+  /* 16px inputs keep iOS Safari from zooming into the form. */
+  .sprint-card .outcomes input,
+  .sprint-card .outcomes textarea {
+    font-size: 16px;
+  }
+}
