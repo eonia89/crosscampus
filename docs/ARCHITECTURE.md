@@ -28,6 +28,7 @@ Live mode requires a verified Google email plus `access/{email}.enabled == true`
 - `counters/{uid}`: monotonic project count and last project ID, coupled to project creation (20 per user).
 - `applications/{projectId}__{uid}`: deterministic record, ownerId, role, note, status, server timestamp. One application per person/project. Reapplying after rejection/withdrawal overwrites that record; this version does not preserve application history.
 - `sprints/{projectId}` and `tasks/{taskId}` subcollection: kickoff goal/meeting and validated tasks. Only team members can read/edit allowed fields.
+- `sprints/{projectId}/outcomes/{o01…o20}`: team-only result link, contribution and reflection. Fixed slot IDs bound each team to 20 outcomes. Author-only edits and deletes. `createdAt`, `userId` and `projectId` are immutable. Peer feedback is embedded as an append-only map of at most 20 entries, so deleting an outcome deletes its feedback atomically.
 - `users/{uid}/bookmarks/{projectId}`: own records.
 - `reports/{projectId}__{uid}`: deduplicated private report.
 
@@ -43,9 +44,9 @@ Read queries filter applications by current user or project owner. Loading sprin
 
 Lists currently load at most 100 projects, 200 profiles, and 200 applications in each own/incoming query. Results beyond those caps are not visible; no pagination is implemented. Writes reload those bounded lists, consuming Firestore reads. This is a small invited pilot, not an unbounded public network. Keep usage visible in the console; add pagination, incremental loading, moderation, abuse controls and evaluated App Check before broader enrollment. Security Rules prevent unauthorized access but are not a general rate limiter.
 
-## Outcomes extension
+## Outcomes and feedback
 
-Implement outcomes and feedback as Firestore subcollections beneath `sprints/{projectId}` with team-only Rules. Keep optional arrays in the demo view model for old localStorage compatibility. Extend both the reducer and the live adapter; client-only work is incomplete. Read the task's URL, author and deletion requirements. Do not add paid server infrastructure for this task.
+Outcomes live in `sprints/{projectId}/outcomes`, readable and writable only by project members (Rules check `memberIds` and the invite on every request). Feedback is stored inside its outcome document, not in a nested subcollection. A nested collection could not prove orphan-free deletion within Firestore's per-request Rules access limits; see [the feature spec](features/sprint-outcomes.md#implemented-storage-decision). The adapter flattens the documents into `world.outcomes` and `world.feedback`. The demo reducer stores the same arrays, and `withOutcomeDefaults` upgrades older saved demo worlds without resetting them. Result URLs are validated, never fetched, and rendered as `target="_blank" rel="noopener noreferrer"` links only when they still match the safe pattern.
 
 ## Historical implementation
 

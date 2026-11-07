@@ -1,6 +1,6 @@
 # Sprint outcomes and peer feedback
 
-Status: **Proposed** · [Issue #1](https://github.com/eonia89/crosscampus/issues/1)
+Status: **Implemented on `feat/sprint-outcomes`, in review** · [Issue #1](https://github.com/eonia89/crosscampus/issues/1)
 Suggested branch: `feat/sprint-outcomes`
 Use the base branch named in the issue.
 
@@ -19,9 +19,23 @@ A team can currently accept members, agree a kickoff goal, and check first-week 
 
 No global showcase, auto-generated recommendation, file upload, external notifications, endorsement score or public profile expansion in this task.
 
+## Implemented storage decision
+
+Embedding feedback in its outcome document makes deletion atomic without any orphan cleanup: there is only one document to delete. The proposed `outcomes/{outcomeId}/feedback/{feedbackId}` subcollection would instead need a batch that deletes the outcome and every feedback document together, plus rules that tie them together. Firestore's [Rules limits](https://firebase.google.com/docs/firestore/security/rules-conditions#access_call_limits) count document-access calls (`get`, `exists`, `getAfter`, `existsAfter`), not writes: 10 per single-document request, and 20 per batch or transaction (each operation also still capped at 10). In the nested design, the outcome-delete rule could not check `existsAfter` for up to 20 feedback IDs, because that is more than 10 calls in one operation. So it would rely on a separately maintained feedback counter (one `getAfter`). Each feedback create and delete would also need its own parent and counter checks, and concurrent comments would have to be coordinated against that counter. That is workable but adds moving parts this bounded feature doesn't need. The implementation therefore uses:
+
+- `sprints/{projectId}/outcomes/{oid}` where `oid` is one of the fixed slots `o01`…`o20`. Rules only allow those IDs, so a team can never hold more than 20 outcomes, including under concurrent creates (two clients claiming the same slot conflict, and the loser moves to the next free slot). Deleting an outcome frees its slot. This replaces the separate counter document.
+- Feedback embedded in the outcome as a map `feedback: {feedbackId: {id, userId, body, createdAt}}` (at most 20 entries) plus `lastFeedbackId`. A teammate's append must add exactly the entry named by `lastFeedbackId`, authored by `request.auth.uid` with `createdAt == request.time`. Existing entries cannot change or disappear. Deleting the outcome document removes its feedback in the same single-document write, so orphaned comments are impossible.
+- The adapter flattens each document into the `outcomes` / `feedback` view-model arrays below, so the UI and the demo share one shape.
+
+Every rule uses at most three document-access calls (invite, project membership, sprint existence).
+
+Slot IDs are reused after deletion, so an outcome instance is identified by its slot ID together with its `createdAt`. Every command that targets an existing outcome (`outcome.update`, `outcome.delete`, `feedback.create`) carries `outcomeCreatedAt`, built by the shared `outcomeTarget()` helper from the outcome on screen. The live adapter compares it with the transaction snapshot before writing (`expectedOutcome()`, re-checked on every transaction retry), and so does the demo reducer. A stale tab therefore gets "이 결과물은 그사이 삭제되거나 새 결과물로 바뀌었어요…" and keeps its draft, instead of editing, deleting or commenting on a replacement outcome. This is a stale-view correctness guard. Firestore Rules remain the security boundary (author-only edits and deletes, team-only access).
+
+Rules URL constraints are deliberately stricter than generic URL syntax and match `SAFE_URL_PATTERN` in `src/lib/domain.mjs`: `https://` only, a DNS host whose last label is alphabetic or punycode (no IP literals, so no loopback or private addresses), no `@` userinfo, no whitespace or backslash, no `*.localhost`, and at most 2048 characters. The reducer validates with `new URL` first and stores the normalized `href`.
+
 ## Suggested data contract
 
-Live records must use `sprints/{projectId}/outcomes/{outcomeId}` and nested `feedback/{feedbackId}` collections, with explicit Firestore Rules. Reconstruct optional arrays in the UI world for compatibility; the arrays below are view-model contracts, not a single live JSON blob. No SQL migration is needed.
+Live records use `sprints/{projectId}/outcomes/{oid}` with embedded feedback (see the storage decision above) and explicit Firestore Rules. Reconstruct optional arrays in the UI world for compatibility; the arrays below are view-model contracts, not a single live JSON blob. No SQL migration is needed.
 
 ```ts
 outcomes?: Array<{
@@ -45,7 +59,7 @@ feedback?: Array<{
 }>;
 ```
 
-Defaults for old browser demo worlds are `[]`. Do not overwrite or reset state on upgrade. Bound each team to 20 outcomes and each outcome to 20 feedback notes using a validated transactional counter; enforce both in Rules, not only UI. The small feedback bound also makes atomic deletion practical.
+Defaults for old browser demo worlds are `[]`. Do not overwrite or reset state on upgrade. Bound each team to 20 outcomes using the fixed slot IDs and each outcome to 20 feedback notes using the embedded map size; enforce both in Rules, not only UI. Deleting the outcome document atomically removes its embedded feedback.
 
 ## Domain actions
 
@@ -56,11 +70,11 @@ Add `outcome.create`, `outcome.update`, `outcome.delete`, `feedback.create` to `
 - Project leader and accepted applicants are members. Pending/rejected/withdrawn applicants are not.
 - Validate URLs with `new URL`, require `https:`, reject embedded credentials, localhost/loopback URLs and invalid syntax. Do not fetch links server-side or generate previews.
 - Render links as escaped text with `target="_blank" rel="noopener noreferrer"`.
-- Delete feedback belonging to a deleted outcome in the same atomic batch. Use `getAfter`/`existsAfter` with the bounded count to ensure no orphan comments. Rules must permit the outcome author to delete its comments only as part of deleting that outcome.
+- Delete the outcome document and its embedded feedback in one write. Rules allow only the outcome author to delete it; there are no separate feedback documents to clean up. The adapter and demo reducer reject a stale outcome instance before editing, deleting or appending feedback.
 - For this version, feedback is append-only. No notifications or arbitrary user lookup.
 - `visibleWorld` must exclude other-team demo records. Firestore Rules must independently reject outsider reads/writes, including direct SDK calls. Load only joined-team records in the live adapter.
 
-Extend `src/lib/firebase-store.mjs`, `src/firebase/client.ts` as needed, `firestore.rules`, and `tests/firebase/rules.test.mjs`. Do not route new live features through the historical Sites API. Use server timestamps, immutable creator/project fields, and transactional counters. Add meaningful Rules tests for author-only changes, outsider denial, forged fields and concurrent limit/deletion races.
+Extend `src/lib/firebase-store.mjs`, `src/firebase/client.ts` as needed, `firestore.rules`, and `tests/firebase/rules.test.mjs`. Do not route new live features through the historical Sites API. Use server timestamps, immutable creator/project fields, fixed outcome slots, and bounded append-only feedback maps. Add meaningful Rules tests for author-only changes, outsider denial, forged fields and concurrent limit/deletion races.
 
 Validate HTTPS links in the reducer with `new URL`. Firestore Rules must also reject unsafe scheme/credentials/loopback, restrict length and schema; a malicious client can bypass reducer validation. Document any deliberately stricter Rules URL constraints. No server-side fetch, preview service or Cloud Functions.
 

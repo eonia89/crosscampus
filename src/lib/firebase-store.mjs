@@ -11,7 +11,18 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { emptyWorld, reduceWorld, firstSteps } from "./domain.mjs";
+import {
+  emptyWorld,
+  reduceWorld,
+  firstSteps,
+  outcomeFields,
+  feedbackBody,
+  outcomeSlots,
+  FEEDBACK_LIMIT,
+  OUTCOME_LIMIT,
+  isExpectedOutcome,
+  STALE_OUTCOME_MESSAGE,
+} from "./domain.mjs";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -23,6 +34,27 @@ const data = (snap) =>
       }
     : null;
 export const applicationId = (pid, uid) => `${pid}__${uid}`;
+const millis = (t) => t?.toMillis?.() ?? t;
+// A live outcome document holds its feedback as a map. Flatten it into the
+// demo-compatible view model: world.outcomes and world.feedback arrays.
+export function splitOutcome(d) {
+  const { feedback = {}, lastFeedbackId, ...o } = d;
+  return {
+    outcome: {
+      ...o,
+      createdAt: millis(o.createdAt),
+      updatedAt: millis(o.updatedAt),
+    },
+    feedback: Object.values(feedback)
+      .map((f) => ({
+        ...f,
+        outcomeId: o.id,
+        projectId: o.projectId,
+        createdAt: millis(f.createdAt),
+      }))
+      .sort((a, b) => a.createdAt - b.createdAt),
+  };
+}
 export function toProject(p) {
   return {
     ...p,
@@ -68,21 +100,38 @@ export function createStore(db, uid) {
     w.filledRoles = Object.fromEntries(
       w.projects.map((p) => [p.id, Object.keys(p.filledRoles)]),
     );
-    w.sprints = (
+    const teams = (
       await Promise.all(
         w.projects
           .filter((p) => p.memberIds.includes(uid))
           .map(async (p) => {
-            const [s, tasks] = await Promise.all([
+            const [s, tasks, outcomes] = await Promise.all([
               getDoc(ref("sprints", p.id)),
               getDocs(collection(db, "sprints", p.id, "tasks")),
+              getDocs(
+                query(
+                  collection(db, "sprints", p.id, "outcomes"),
+                  limit(OUTCOME_LIMIT),
+                ),
+              ),
             ]);
             return s.exists()
-              ? { ...s.data(), tasks: tasks.docs.map((t) => t.data()) }
+              ? {
+                  sprint: {
+                    ...s.data(),
+                    tasks: tasks.docs.map((t) => t.data()),
+                  },
+                  outcomes: outcomes.docs.map((o) => splitOutcome(o.data())),
+                }
               : null;
           }),
       )
     ).filter(Boolean);
+    w.sprints = teams.map((t) => t.sprint);
+    w.outcomes = teams
+      .flatMap((t) => t.outcomes.map((o) => o.outcome))
+      .sort((a, b) => b.createdAt - a.createdAt);
+    w.feedback = teams.flatMap((t) => t.outcomes.flatMap((o) => o.feedback));
     return w;
   }
   async function execute(c) {
@@ -248,8 +297,79 @@ export function createStore(db, uid) {
         reason,
         createdAt: serverTimestamp(),
       });
+    } else if (c.type === "outcome.create") {
+      const fields = outcomeFields(c.outcome);
+      const outcomes = collection(db, "sprints", c.projectId, "outcomes");
+      // Slots are claimed inside a transaction; if a teammate takes the same
+      // slot concurrently, the transaction sees it and moves to the next one.
+      const taken = new Set(
+        (await getDocs(query(outcomes, limit(OUTCOME_LIMIT)))).docs.map(
+          (d) => d.id,
+        ),
+      );
+      let saved = false;
+      for (const id of outcomeSlots.filter((s) => !taken.has(s))) {
+        saved = await runTransaction(db, async (tx) => {
+          const slot = await tx.get(doc(outcomes, id));
+          if (slot.exists()) return false;
+          tx.set(slot.ref, {
+            id,
+            projectId: c.projectId,
+            userId: uid,
+            ...fields,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            feedback: {},
+            lastFeedbackId: "",
+          });
+          return true;
+        });
+        if (saved) break;
+      }
+      if (!saved)
+        fail(`결과물은 팀마다 ${OUTCOME_LIMIT}개까지 남길 수 있어요.`);
+    } else if (c.type === "outcome.update" || c.type === "outcome.delete") {
+      const fields =
+        c.type === "outcome.update" ? outcomeFields(c.outcome) : null;
+      await runTransaction(db, async (tx) => {
+        const o = await expectedOutcome(tx, c);
+        if (o.data().userId !== uid)
+          fail("내가 남긴 결과물만 수정하거나 삭제할 수 있어요.");
+        if (fields)
+          tx.update(o.ref, { ...fields, updatedAt: serverTimestamp() });
+        else tx.delete(o.ref);
+      });
+    } else if (c.type === "feedback.create") {
+      const body = feedbackBody(c.body);
+      const id = crypto.randomUUID().replaceAll("-", "");
+      await runTransaction(db, async (tx) => {
+        const o = await expectedOutcome(tx, c);
+        if (Object.keys(o.data().feedback ?? {}).length >= FEEDBACK_LIMIT)
+          fail(`피드백은 결과물마다 ${FEEDBACK_LIMIT}개까지 남길 수 있어요.`);
+        tx.update(o.ref, {
+          [`feedback.${id}`]: {
+            id,
+            userId: uid,
+            body,
+            createdAt: serverTimestamp(),
+          },
+          lastFeedbackId: id,
+        });
+      });
     } else fail("지원하지 않는 요청이에요.");
     return load();
+  }
+  // Reads the targeted outcome inside the transaction (so retries re-check it)
+  // and rejects the command if the slot is empty or now holds a different
+  // outcome instance than the one the caller was viewing.
+  async function expectedOutcome(tx, c) {
+    const o = await tx.get(
+      ref("sprints", c.projectId, "outcomes", c.outcomeId),
+    );
+    if (!o.exists()) fail("결과물을 찾을 수 없어요. 이미 삭제됐을 수 있어요.");
+    if (!isExpectedOutcome(millis(o.data().createdAt), c.outcomeCreatedAt))
+      fail(STALE_OUTCOME_MESSAGE);
+    return o;
   }
   return { load, execute };
 }
