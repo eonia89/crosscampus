@@ -19,7 +19,7 @@ A project listing should answer three questions: **What will we make? What can I
 | Build the team      | The leader reviews private proposals and accepts one member per role.                                 |
 | Start together      | Acceptance opens a private kickoff board with a goal, meeting details, and role-specific first tasks. |
 
-[Sprint outcomes and peer feedback](https://github.com/eonia89/crosscampus/issues/1) let team members record what they made, what they contributed and learned, and give each other feedback, visible only to the team.
+[Sprint outcomes and peer feedback](https://github.com/eonia89/crosscampus/issues/1) are implemented on this feature branch and let team members record what they made, what they contributed and learned, and give each other feedback, visible only to the team. This feature is not yet deployed to the public demo.
 
 ## Try it
 

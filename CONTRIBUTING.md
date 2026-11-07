@@ -28,7 +28,7 @@ The seed command grants local access to `owner@example.test` and `member@example
 
 ## Branch and review
 
-Use the base branch named in the issue; otherwise start from current `main`. Create a focused feature branch such as `feat/sprint-outcomes` and submit a PR against that base. Repository access is required for this private project; contact the maintainer if access is missing.
+Use the base branch named in the issue; otherwise start from current `main`. Create a focused feature branch such as `feat/sprint-outcomes` and submit a PR against that base. This repository is public and can be cloned without collaborator access. Pushing a branch to the shared repository requires collaborator permission; contact the maintainer if that permission is missing.
 
 Read `AGENTS.md` and `docs/ARCHITECTURE.md` before editing. A feature involving private data must include both demo behavior and Firestore persistence/Rules. Client validation alone does not enforce access.
 

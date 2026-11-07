@@ -59,7 +59,7 @@ feedback?: Array<{
 }>;
 ```
 
-Defaults for old browser demo worlds are `[]`. Do not overwrite or reset state on upgrade. Bound each team to 20 outcomes and each outcome to 20 feedback notes using a validated transactional counter; enforce both in Rules, not only UI. The small feedback bound also makes atomic deletion practical.
+Defaults for old browser demo worlds are `[]`. Do not overwrite or reset state on upgrade. Bound each team to 20 outcomes using the fixed slot IDs and each outcome to 20 feedback notes using the embedded map size; enforce both in Rules, not only UI. Deleting the outcome document atomically removes its embedded feedback.
 
 ## Domain actions
 
@@ -70,11 +70,11 @@ Add `outcome.create`, `outcome.update`, `outcome.delete`, `feedback.create` to `
 - Project leader and accepted applicants are members. Pending/rejected/withdrawn applicants are not.
 - Validate URLs with `new URL`, require `https:`, reject embedded credentials, localhost/loopback URLs and invalid syntax. Do not fetch links server-side or generate previews.
 - Render links as escaped text with `target="_blank" rel="noopener noreferrer"`.
-- Delete feedback belonging to a deleted outcome in the same atomic batch. Use `getAfter`/`existsAfter` with the bounded count to ensure no orphan comments. Rules must permit the outcome author to delete its comments only as part of deleting that outcome.
+- Delete the outcome document and its embedded feedback in one write. Rules allow only the outcome author to delete it; there are no separate feedback documents to clean up. The adapter and demo reducer reject a stale outcome instance before editing, deleting or appending feedback.
 - For this version, feedback is append-only. No notifications or arbitrary user lookup.
 - `visibleWorld` must exclude other-team demo records. Firestore Rules must independently reject outsider reads/writes, including direct SDK calls. Load only joined-team records in the live adapter.
 
-Extend `src/lib/firebase-store.mjs`, `src/firebase/client.ts` as needed, `firestore.rules`, and `tests/firebase/rules.test.mjs`. Do not route new live features through the historical Sites API. Use server timestamps, immutable creator/project fields, and transactional counters. Add meaningful Rules tests for author-only changes, outsider denial, forged fields and concurrent limit/deletion races.
+Extend `src/lib/firebase-store.mjs`, `src/firebase/client.ts` as needed, `firestore.rules`, and `tests/firebase/rules.test.mjs`. Do not route new live features through the historical Sites API. Use server timestamps, immutable creator/project fields, fixed outcome slots, and bounded append-only feedback maps. Add meaningful Rules tests for author-only changes, outsider denial, forged fields and concurrent limit/deletion races.
 
 Validate HTTPS links in the reducer with `new URL`. Firestore Rules must also reject unsafe scheme/credentials/loopback, restrict length and schema; a malicious client can bypass reducer validation. Document any deliberately stricter Rules URL constraints. No server-side fetch, preview service or Cloud Functions.
 
